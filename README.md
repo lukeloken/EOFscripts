@@ -7,6 +7,9 @@ This repo contains scripts for processin edge of field water quality data.
 Data will be archived here, here and here...
  path to the local copy of the canonical shared drive:
 
+Each site has the ability to process and analysis their own data using the following functions. Their is a workflow script titled: master_run_file.R in the 'scripts' folder. 
+
+
 ```
 ## Process your raw data ##
 

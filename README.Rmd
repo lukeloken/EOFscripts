@@ -1,13 +1,3 @@
----
-title: "README"
-author: "Luke Loken"
-date: "1/21/2020"
-output: html_document
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 
 ## Scripts for analyzing Edge of Field Data
 

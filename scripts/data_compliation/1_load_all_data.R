@@ -1,9 +1,7 @@
 
-
 #Loop through all site folders and load edge of field runoff data
-library(drake)
 
-
+#This is where the data live
 print(path_to_data)
 
 #Create empty list for all site data
@@ -96,5 +94,5 @@ for (state_nu in 1:length(states)){
 #Combine all sites into a single data.frame
 data_df <- ldply(allsites_list, data.frame, .id = "state")
 
-
-
+rm(allsites_list, data_i, file_site_list, statesites_list)
+rm(file_site_name, folder, folder_nu, folders, mod_files, name_length, recent_folder, rundate_folders, rundates, state, state_nu, state_tz, states, tables)

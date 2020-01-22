@@ -1,5 +1,0 @@
-
-## Scripts for analyzing Edge of Field Data
-
-Luke Loken
-

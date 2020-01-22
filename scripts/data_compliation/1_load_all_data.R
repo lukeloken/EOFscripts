@@ -87,6 +87,6 @@ for (state_nu in 1:length(states)){
 data_df <- ldply(allsites_list, data.frame, .id = "state")
 
 
-head(data_df)
-str(data_df)
+# head(data_df)
+# str(data_df)
 

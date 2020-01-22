@@ -11,11 +11,27 @@ if (exists("data_df")){
 }
 
 
+loadvars <- c('suspended_sediment_load_pounds', 
+              'chloride_load_pounds',
+              'no2_no3n_load_pounds', 
+              'ammonium_n_load_pounds',
+              'tkn_unfiltered_load_pounds', 
+              'orthophosphate_load_pounds',
+              'tp_unfiltered_load_pounds',
+              'total_nitrogen_load_pounds',
+              'organic_nitrogen_load_pounds',
+              'doc_load_pounds',
+              'toc_load_pounds')
+              
 data_df2 <- data_df %>%
   mutate(site = as.character(site),
          storm_middate = storm_start + difftime(storm_end, storm_start, units='secs')/2) %>%
   mutate(wateryear = getWY (storm_middate)) %>%
-  select(-file_id, -unique_storm_number, -sub_storms, -rain_startdate, -rain_enddate, -storm_start, -storm_end, -sample_end, -sample_start, -ant_discharge_date)
+  select(-file_id, -unique_storm_number, -sub_storms, -rain_startdate, -rain_enddate, -storm_start, -storm_end, -sample_end, -sample_start, -ant_discharge_date) 
+
+
+  # unite("suspended_sediment_load_pounds2", c("suspended_sediment_load_pounds", "Suspended.Sediment.Load..pounds"), na.rm=T, remove=F)  
+
 
 data_concentration
 

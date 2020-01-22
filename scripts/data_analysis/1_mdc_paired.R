@@ -33,15 +33,15 @@ if (length(concentrations) == 1 & !is.na(concentrations)){
   con_concvars <- grep(control_ste, concvars, ignore.case = TRUE, value = TRUE)
 }
 
-if (length(other_responses) == 1 & !is.na(other_responses)){
-  othervars <- grep(concentrations, names(wq), ignore.case = TRUE, value = TRUE)
+if (length(other_responses) >= 1 & !is.na(other_responses)){
+  othervars <- grep("peak_discharge|runoff_volume", names(wq), ignore.case = TRUE, value = TRUE)
   trt_othervars <- grep(test_site, othervars, ignore.case = TRUE, value = TRUE)
   con_othervars <- grep(control_site, othervars, ignore.case = TRUE, value = TRUE)
-} else if (is.na(concentrations)) {
+} else if (is.na(other_responses)) {
   trt_othervars <- NA
   con_othervars <- NA
 } else {
-  othervars <- concentrations
+  othervars <- other_responses
   trt_othervars <- grep(test_site, othervars, ignore.case = TRUE, value = TRUE)
   con_othervars <- grep(control_site, othervars, ignore.case = TRUE, value = TRUE)
 }

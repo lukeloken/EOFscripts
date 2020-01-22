@@ -26,7 +26,7 @@ if (is.na(discharge_file)) {
 
 stats = c('sum')
 
-discharge_vars <- TSstats(discharge.dat, date = 'Date', varnames = 'Flow_Inst', dates = storms, starttime = "storm_start",
+discharge_vars <- TSstats(discharge.dat, date = 'dateTime', varnames = 'Flow_Inst', dates = storms, starttime = "storm_start",
                           times = antecedent_days, units = 'days', stats.return = stats)
 
 # rename columns
@@ -37,7 +37,7 @@ discharge_vars <- select(discharge_vars, -storm_start)
 temp_filename <- file.path('data_cached', paste0(site, '_discharge_variables.csv'))
 write.csv(discharge_vars, temp_filename, row.names = FALSE)
 
-test <- discharge_vars[!is.na(discharge_vars$ant_dis_1day_max), ]
+test <- discharge_vars[!is.na(discharge_vars$ant_dis_1day_sum), ]
 
 if (nrow(test) > 0) {
   message(paste("The discharge data have been processed. Please check", temp_filename, "to ensure correct processing."))

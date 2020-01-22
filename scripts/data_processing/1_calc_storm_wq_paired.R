@@ -67,8 +67,9 @@ trt_combined_events <- name_changer(trt_combined_events, 'trt_')
 
 wq <- full_join(con_combined_events, trt_combined_events, by = 'unique_storm_number')
 
-# remove rows with NA that occur due to unmatched pairs (event at one site did not occur at other)
-wq <- wq[complete.cases(wq), ]
+# remove rows with NA or 0 loads that occur due to unmatched pairs (event at one site did not occur at other)
+#wq<- wq[wq==0] <- NA
+wq <- wq[complete.cases(wq), ]																										  
 
 # set dates to time zone
 .origin <- as.POSIXct(ifelse(Sys.info()[['sysname']] == "Windows", "1899-12-30", "1904-01-01"))

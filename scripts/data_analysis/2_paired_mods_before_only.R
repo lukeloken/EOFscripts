@@ -1,5 +1,5 @@
 # loop through each response var
-# uses vars set up in 1_mds_paired.R
+# uses vars set up in 1_mdc_paired.R
 dat <- wq
 out <- data.frame(matrix(nrow = length(trt_vars), ncol = 10))
 names(out) <- c('response', 'rsq', 'pval_period_int', 'pval_period_slope', 'intercept', 'slope', 

@@ -30,18 +30,19 @@ if (!is.na(weather_file)) {
 
 # calculate change in snow depth
 # check if snow var is in weather_dat
+# if (!is.na(weather_file) & 'snwd' %in% names(weather_dat)) {
 if (!is.na(weather_file) & 'snwd' %in% names(weather_file)) {
   snow_in_file <- TRUE
 } else {
   snow_in_file <- FALSE
 }
 
-if (snow_in_file == FALSE) {
-  snowpack_diff <- diff(weather_noaa$snwd)
-  weather_noaa$snwd_diff[2:nrow(weather_noaa)] <- snowpack_diff
-} else {
+if (snow_in_file == TRUE) {
   snowpack_diff <- diff(weather_dat$snwd)
   weather_dat$snwd_diff[2:nrow(weather_dat)] <- snowpack_diff
+} else {
+  snowpack_diff <- diff(weather_noaa$snwd)
+  weather_noaa$snwd_diff[2:nrow(weather_noaa)] <- snowpack_diff
 }
 
 if (!is.na(weather_file) & !is.na(noaa_site)) {
@@ -85,8 +86,8 @@ for (i in 1:nrow(storms)) {
   
 }
 
-weather.dat <- select(storms, unique_storm_number, sin_sdate:snwd_diff)
-
+weather.dat <- select(storms, unique_storm_number, sin_sdate:ncol(storms))
+weather.dat[c("snwd_diff")][is.na(weather.dat[c("snwd_diff")])] <- 0
 weather_tempname <- file.path('data_cached', paste0(site, '_weather_by_storm.csv'))
 write.csv(weather.dat, weather_tempname, row.names = F)
 

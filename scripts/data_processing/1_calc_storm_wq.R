@@ -3,7 +3,7 @@ wq <- read.csv(file.path('data_raw', wq_file), na.strings = c("", "NA"), strings
 
 # check to see if all required columns are in data frame 
 # use list in stickies to set this, not quite sure what the complete list is
-must.haves <- c('storm_start', 'storm_end', 'sample_start', 'sample_end', 'runoff_volume', 
+must.haves <- c('storm_start', 'storm_end', 'storm_runoff_cubic_feet', 
                 'unique_storm_number', 'unique_storm_id', 'peak_discharge', 'frozen')
 
 # set concentration, load, and flag variables
@@ -51,7 +51,7 @@ write.csv(response_table, file.path('data_cached', paste0(site, '_response_var_c
 .origin <- as.POSIXct(ifelse(Sys.info()[['sysname']] == "Windows", "1899-12-30", "1904-01-01"))
 tz(.origin) <- site_tz
 
-date.vars <- c('sample_start', 'sample_end', 'storm_start', 'storm_end')
+date.vars <- c('storm_start', 'storm_end')
 
 for (i in 1:length(date.vars)) {
   wq[,date.vars[i]] <- as.POSIXct(wq[,date.vars[i]], origin = .origin, tz = site_tz, format = datetime_format)
@@ -63,8 +63,10 @@ for (i in 1:length(date.vars)) {
 # clean up the data to exclude estimated values, combine sub storm events, etc.
 # exclude storms that have a 1 in exclude, are estimated, or are discrete samples
 storms <- filter(wq, exclude == 0) %>%
-  filter(estimated == 0) %>%
-  filter(discrete == 0)
+  #filter(storm == 0) %>% #Event or Baseflow Toggle for Tile sites
+  filter(estimated == 0) #%>%
+  filter(discrete == 0) %>%
+  #filter(frozen == 0))
 
 # make "<" values equal to half of the censored value
 
@@ -75,19 +77,19 @@ for (i in 1:length(flagvars)) {
   flags <- grep('<', storms[, flagvars[i]])
   storms[flags, concvars[i]] <- 0.5*storms[flags, concvars[i]]
   print(paste0(length(flags), ' observations below detection limit for ', concvars[i]))
-}
+  }
 }
 
 # combine sub storms
-# add a column that will be used for weighting concentrations by total runoff volume
-storm.vols <- wq[,c('unique_storm_number', 'runoff_volume', 'unique_storm_id')]
+# add a column that will be used for weighting concentrations by total storm_runoff_volume
+storm.vols <- wq[,c('unique_storm_number', 'storm_runoff_cubic_feet', 'unique_storm_id')]
 storm.vols <- storm.vols %>%
   group_by(unique_storm_number) %>%
-  summarise(sum_runoff = sum(runoff_volume), 
+  summarise(sum_runoff = sum(storm_runoff_cubic_feet), 
             sub_storms = paste(unique_storm_id, collapse = ","))
 
 storms <- merge(storms, storm.vols, by = 'unique_storm_number', all.x = TRUE)
-storms <- mutate(storms, vol_weight = runoff_volume/sum_runoff)
+storms <- mutate(storms, vol_weight = storm_runoff_cubic_feet/sum_runoff)
 
 # get rid of any samples that do not have a volume weight, 
 # which will give us NA values later on
@@ -117,12 +119,12 @@ concbystorm <- concbystorm %>%
 stormdesc <- storms %>%
   group_by(unique_storm_number) %>%
   summarise(
-    sample_start = min(sample_start, na.rm = TRUE),
-    sample_end = max(sample_end, na.rm = TRUE),
+    #sample_start = min(sample_start, na.rm = TRUE),
+    #sample_end = max(sample_end, na.rm = TRUE),
     storm_start = min(storm_start),
     storm_end = max(storm_end),
     peak_discharge = max(peak_discharge), 
-    runoff_volume = sum(runoff_volume), 
+    runoff_volume = sum(storm_runoff_cubic_feet), 
     frozen = paste0(unique(frozen), collapse = ', ')
   )
 
@@ -142,12 +144,12 @@ wq.bystorm <- merge(wq.bystorm, stormdesc)
   stormdesc <- storms %>%
     group_by(unique_storm_number) %>%
     summarise(
-      sample_start = min(sample_start, na.rm = TRUE),
-      sample_end = max(sample_end, na.rm = TRUE),
+      #sample_start = min(sample_start, na.rm = TRUE),
+      #sample_end = max(sample_end, na.rm = TRUE),
       storm_start = min(storm_start),
       storm_end = max(storm_end),
       peak_discharge = max(peak_discharge), 
-      runoff_volume = sum(runoff_volume), 
+      runoff_volume = sum(storm_runoff_cubic_feet), 
       frozen = paste0(unique(frozen), collapse = ', ')
     )
   

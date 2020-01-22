@@ -1,6 +1,6 @@
 # diagnostic plots for paired design
 test_site <- 'trt'
-control_site <- 'con' 
+control_site <- 'con'
 
 tempfile <- file.path('data_cached', paste0(site, '_', site_paired, "_prepped_WQbystorm.csv"))
 wq <- read.csv(tempfile, stringsAsFactors = F)

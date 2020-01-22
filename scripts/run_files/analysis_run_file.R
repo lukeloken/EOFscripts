@@ -21,7 +21,13 @@ if (study_type == 'before_after') {
   mod_env <- new.env()
   source('scripts/data_analysis/1_mdc_paired.R', echo = F, local = mod_env)
   
+  if (bmp_date>end_date) {
+    message('Plotting paired watershed vs control watershed before-only-data')
+    source('scripts/data_analysis/2_paired_mods_before_only.R', echo = F, local = mod_env)
+    
+  }else{
   message('Testing whether BMP implementation reduced loads/concentrations.')
   source('scripts/data_analysis/2_paired_mods.R', echo = F, local = mod_env)
   
+  }
 }

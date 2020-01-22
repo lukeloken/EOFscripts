@@ -10,12 +10,11 @@ source('scripts/data_processing/0_check_inputs.R')
 source('scripts/functions/fxns_data_processing.R')
 
 if (study_type == 'before_after') {
+
 # source the water quality file which is the basis for all other processing.
 message('Importing and processing the storm water quality data for the before & after study.')
 wq_env <- new.env()
 source('scripts/data_processing/1_calc_storm_wq.R', echo = F, local = wq_env)
-
-
 
 # source all data processing steps
 message('Importing and processing rain metrics.')

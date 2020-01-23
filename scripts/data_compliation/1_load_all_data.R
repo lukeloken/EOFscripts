@@ -103,8 +103,8 @@ loadvars <- c('suspended_sediment_load_pounds',
               'tp_unfiltered_load_pounds',
               'total_nitrogen_load_pounds',
               'organic_nitrogen_load_pounds',
-              'doc_load_pounds',
-              'toc_load_pounds')
+              'tp_unfiltered_load_pounds',
+              'no2_no3n_load_pounds')
 
 badvars <- c('Suspended.Sediment.Load..pounds', 
              'Chloride.Load..pounds',
@@ -114,7 +114,9 @@ badvars <- c('Suspended.Sediment.Load..pounds',
              'Dissolved.Reactive.Phosphorus.Load..pounds',
              'TP.Unfiltered.Load..pounds',
              'Total.Nitrogen.Load..in.pounds',
-             'Organic.Nitrogen.Load..pounds')
+             'Organic.Nitrogen.Load..pounds',
+             'total_phosphorus_unfiltered_load_pounds',
+             'no2_no3_n_load_pounds')
 
 # combine columns with the same data but differnet names
 # For some reason tidy:unite was not working for me
@@ -131,4 +133,4 @@ data_df <- data_df %>%
 
 
 rm(allsites_list, data_i, file_site_list, statesites_list)
-rm(file_site_name, folder, folder_nu, folders, mod_files, name_length, recent_folder, rundate_folders, rundates, state, state_nu, state_tz, states, tables, badvars, NAs)
+rm(file_site_name, folder, folder_nu, folders, mod_files, name_length, recent_folder, rundate_folders, rundates, state, state_nu, state_tz, states, tables, badvars, NAs, loadvars)

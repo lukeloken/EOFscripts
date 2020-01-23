@@ -11,29 +11,16 @@ if (exists("data_df")){
 }
 
 
-loadvars <- c('suspended_sediment_load_pounds', 
-              'chloride_load_pounds',
-              'no2_no3n_load_pounds', 
-              'ammonium_n_load_pounds',
-              'tkn_unfiltered_load_pounds', 
-              'orthophosphate_load_pounds',
-              'tp_unfiltered_load_pounds',
-              'total_nitrogen_load_pounds',
-              'organic_nitrogen_load_pounds',
-              'doc_load_pounds',
-              'toc_load_pounds')
-              
+
 data_df2 <- data_df %>%
   mutate(site = as.character(site),
          storm_middate = storm_start + difftime(storm_end, storm_start, units='secs')/2) %>%
-  mutate(wateryear = getWY (storm_middate)) %>%
+  mutate(wateryear = as.factor(getWY (storm_middate))) %>%
   select(-file_id, -unique_storm_number, -sub_storms, -rain_startdate, -rain_enddate, -storm_start, -storm_end, -sample_end, -sample_start, -ant_discharge_date) 
 
 
-  # unite("suspended_sediment_load_pounds2", c("suspended_sediment_load_pounds", "Suspended.Sediment.Load..pounds"), na.rm=T, remove=F)  
 
 
-data_concentration
 
 data_wateryear_summary <- data_df2 %>%
   group_by (site, wateryear, period) %>%
@@ -42,3 +29,20 @@ data_wateryear_summary <- data_df2 %>%
   summarize_all(mean, na.rm=T)
 
 data_wateryear_summary
+
+
+#playing with plotting
+#this will go to its own script later
+library(ggpubr)
+
+ggplot(data=data_df2, aes_string(x="sum_runoff", y=loadvars[1], group="wateryear", color="wateryear")) +
+  geom_point() +
+  stat_smooth(method = "lm", se=F) +
+  facet_wrap(~site, scales='free') +
+  theme_bw()
+
+ggplot(data=data_df2, aes_string(x="sum_runoff", y=loadvars[7], group="wateryear", color="wateryear")) +
+  geom_point() +
+  stat_smooth(method = "lm", se=F) +
+  facet_wrap(~site, scales='free') +
+  theme_bw()

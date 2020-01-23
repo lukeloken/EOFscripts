@@ -92,7 +92,35 @@ for (state_nu in 1:length(states)){
 }
 
 #Combine all sites into a single data.frame
-data_df <- ldply(allsites_list, data.frame, .id = "state")
+data_df <- ldply(allsites_list, data.frame, .id = "state") 
+
+# combine columns with the same data but differnet names
+# For some reason tidy:unite was not working for me
+data_df$suspended_sediment_load_pounds[which(is.na(data_df$suspended_sediment_load_pounds))] <-
+  data_df$Suspended.Sediment.Load..pounds[which(is.na(data_df$suspended_sediment_load_pounds))] 
+data_df$chloride_load_pounds[which(is.na(data_df$chloride_load_pounds))] <- 
+  data_df$Chloride.Load..pounds[which(is.na(data_df$chloride_load_pounds))] 
+
+data_df$no2_no3n_load_pounds[which(is.na(data_df$no2_no3n_load_pounds))] <-
+  data_df$NO2.NO3.N..Load..pounds[which(is.na(data_df$no2_no3n_load_pounds))] 
+
+data_df$ammonium_n_load_pounds[which(is.na(data_df$ammonium_n_load_pounds))] <- 
+  data_df$Ammonium..N..Load..pounds[which(is.na(data_df$ammonium_n_load_pounds))] 
+
+data_df$tkn_unfiltered_load_pounds[which(is.na(data_df$tkn_unfiltered_load_pounds))] <-
+  data_df$TKN.Unfiltered.Load..pounds[which(is.na(data_df$tkn_unfiltered_load_pounds))] 
+
+data_df$orthophosphate_load_pounds[which(is.na(data_df$orthophosphate_load_pounds))] <-
+  data_df$Dissolved.Reactive.Phosphorus.Load..pounds[which(is.na(data_df$orthophosphate_load_pounds))] 
+
+data_df$tp_unfiltered_load_pounds[which(is.na(data_df$tp_unfiltered_load_pounds))] <- 
+  data_df$TP.Unfiltered.Load..pounds[which(is.na(data_df$tp_unfiltered_load_pounds))] 
+
+data_df$total_nitrogen_load_pounds[which(is.na(data_df$total_nitrogen_load_pounds))] <-
+  data_df$Total.Nitrogen.Load..in.pounds[which(is.na(data_df$total_nitrogen_load_pounds))] 
+
+data_df$organic_nitrogen_load_pounds[which(is.na(data_df$organic_nitrogen_load_pounds))] <-
+  data_df$Organic.Nitrogen.Load..pounds[which(is.na(data_df$organic_nitrogen_load_pounds))] 
 
 rm(allsites_list, data_i, file_site_list, statesites_list)
 rm(file_site_name, folder, folder_nu, folders, mod_files, name_length, recent_folder, rundate_folders, rundates, state, state_nu, state_tz, states, tables)

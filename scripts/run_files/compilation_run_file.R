@@ -4,6 +4,7 @@
 
 #load functions
 source('scripts/functions/fxns_data_compilation.R')
+source('scripts/functions/g_legend.R')
 
 #load all surface water data
 #output is a data.frame named "data_df"

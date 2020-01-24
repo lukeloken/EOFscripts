@@ -12,8 +12,14 @@ library(plyr)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(ggfortify)
+library(RColorBrewer)
+library(viridis)
 library(gridExtra)
 library(lubridate)
+library(corrplot)
+library(PerformanceAnalytics)
+
 
 
 source('scripts/run_files/compilation_run_file.R')

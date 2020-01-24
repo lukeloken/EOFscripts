@@ -23,18 +23,17 @@ loadvars <- c('suspended_sediment_load_pounds',
               'toc_load_pounds',
               'doc_load_pounds')
 
-concvars <- c('suspended_sediment_conc', 
-              'chloride_conc',
-              'no2_no3n_conc', 
-              'ammonium_n_conc',
-              'tkn_unfiltered_conc', 
-              'orthophosphate_conc',
-              'tp_unfiltered_conc',
-              'total_nitrogen_conc',
-              'organic_nitrogen_conc',
-              'toc_conc',
-              'doc_conc')
-
+concvars <- c('suspended_sediment_conc_mgL', 
+              'chloride_conc_mgL',
+              'no2_no3n_conc_mgL', 
+              'ammonium_n_conc_mgL',
+              'tkn_unfiltered_conc_mgL', 
+              'orthophosphate_conc_mgL',
+              'tp_unfiltered_conc_mgL',
+              'total_nitrogen_conc_mgL',
+              'organic_nitrogen_conc_mgL',
+              'toc_conc_mgL',
+              'doc_conc_mgL')
 
 
 data_df2 <- data_df %>%
@@ -43,11 +42,19 @@ data_df2 <- data_df %>%
   mutate(wateryear = as.factor(getWY (storm_middate))) %>%
   select(-file_id, -unique_storm_number, -sub_storms, -rain_startdate, -rain_enddate, -storm_start, -storm_end, -sample_end, -sample_start, -ant_discharge_date)
 
-conc_df <- data.frame(sapply(data_df2[,loadvars], function (x) x/data_df2$runoff_volume))
+#constants for converstions from load (pounds) and volume (cf) to concentration (mg/L)
+453592 # mg per pound
+28.3168 # Liters per cubic foot
+
+#Calculate concentration (mg per L) from load (pounds) and runoff volume (cf)
+conc_df <- data.frame(sapply(data_df2[,loadvars], function (x) x/data_df2$runoff_volume*453592/28.3168))
 colnames(conc_df) <- concvars
 rownames(conc_df) <- NULL
 
 data_df3 <- bind_cols(data_df2, conc_df)
+
+#Subste to non-frozen conditions
+data_df4 <-filter(data_df3, frozen==FALSE)
 
 
 data_wateryear_summary <- data_df2 %>%
@@ -113,6 +120,61 @@ for (var_i in 1:length(concvars)){
   print(ConcByRunnoff_plotlist[[var_i]])
   
   ggsave(file_out(file.path(path_to_results, "Figures", "Conc", paste0(concvars[var_i], "ByRunoff_plot.png"))), ConcByRunnoff_plotlist[[var_i]], height=8, width=12, units = 'in', dpi=320)
+  
+}
+
+
+
+
+ConcByYear_boxlist<-list()
+var_i <- 1
+for (var_i in 1:length(concvars)){
+  
+  ConcByYear_boxlist[[var_i]] <- ggplot(data=data_df3, aes_string(x="wateryear", y=concvars[var_i], group="wateryear", color="wateryear", fill="wateryear")) +
+    scale_y_log10() +
+    geom_jitter(width = .1, size=1, alpha=.5, shape=16) + 
+    geom_boxplot(alpha=0.2, outlier.shape = NA) +
+    # scale_shape_manual(values=c(16, 1))+
+    # stat_smooth(method = "lm", se=T, alpha=.1) +
+    facet_wrap(~site, scales='free_y') +
+    theme_bw() +
+    theme(legend.position = 'bottom') +
+    guides(color = guide_legend(nrow = 1)) +
+    labs(x = "Water year") +
+    theme(axis.text=element_text(size=8)) +
+    ggtitle('All runoff events') +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  print(ConcByYear_boxlist[[var_i]])
+  
+  ggsave(file_out(file.path(path_to_results, "Figures", "Boxplots", paste0(concvars[var_i], "ByYear_boxplot.png"))), ConcByYear_boxlist[[var_i]], height=8, width=12, units = 'in', dpi=320)
+  
+}
+
+
+
+ConcByYear_nonFrozen_boxlist<-list()
+var_i <- 1
+for (var_i in 1:length(concvars)){
+  
+  ConcByYear_nonFrozen_boxlist[[var_i]] <- ggplot(data=data_df4, aes_string(x="wateryear", y=concvars[var_i], group="wateryear", color="wateryear", fill="wateryear")) +
+    scale_y_log10() +
+    geom_jitter(width = .1, size=1, alpha=.5, shape=16) + 
+    geom_boxplot(alpha=0.2, outlier.shape = NA) +
+    # scale_shape_manual(values=c(16, 1))+
+    # stat_smooth(method = "lm", se=T, alpha=.1) +
+    facet_wrap(~site, scales='free_y') +
+    theme_bw() +
+    theme(legend.position = 'bottom') +
+    guides(color = guide_legend(nrow = 1)) +
+    labs(x = "Water year") +
+    theme(axis.text=element_text(size=8)) +
+    ggtitle('Non-frozen runoff events') +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  print(ConcByYear_nonFrozen_boxlist[[var_i]])
+  
+  ggsave(file_out(file.path(path_to_results, "Figures", "Boxplots", paste0(concvars[var_i], "ByYear_nonFrozen_boxplot.png"))), ConcByYear_nonFrozen_boxlist[[var_i]], height=8, width=12, units = 'in', dpi=320)
   
 }
 

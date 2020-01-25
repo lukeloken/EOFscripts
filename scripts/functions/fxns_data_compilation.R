@@ -22,3 +22,13 @@ return(WY)
 
 }
 
+#combine percent clay, silt, sand among multiple depths
+#Need the percents (e.g., clay), Bulk density, and relative heights
+CombineDepthPercent <- function (Per.top, BD.top, depth.top, Per.bot, BD.bot, depth.bot){
+
+Per.combined <- (Per.top*BD.top*depth.top + Per.bot*BD.bot*depth.bot)/ (BD.top*depth.top + BD.bot*depth.bot)
+
+return(Per.combined)
+
+}
+

@@ -10,5 +10,11 @@ source('scripts/functions/g_legend.R')
 #output is a data.frame named "data_df"
 source('scripts/data_compliation/1_load_all_data.R')
 
-
+#summarize water quality data
+#Currently makes lots of figures
 source('scripts/data_compliation/2_summarize_data.R')
+
+#load soil data
+# as of January 2020, this only includes spring 2016 and fall 2017 data
+
+# source('scripts/3_load_soil_data.R')

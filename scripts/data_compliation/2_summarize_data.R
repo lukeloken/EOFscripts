@@ -135,8 +135,8 @@ var_i <- 1
 for (var_i in 1:length(rainvars)){
   
   RainByRunnoff_plotlist[[var_i]] <- ggplot(data=data_df2, aes_string(x="sum_runoff", y=rainvars[var_i], group="wateryear", color="wateryear", fill="wateryear")) +
-    # scale_x_log10() +
-    # scale_y_log10() +
+    scale_x_log10() +
+    scale_y_log10() +
     geom_point(aes(shape=frozen), size=2) +
     scale_shape_manual(values=c(16, 1))+
     stat_smooth(method = "lm", se=T, alpha=.1) +

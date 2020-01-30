@@ -1,28 +1,12 @@
 
 
-#Plot concentration and load data
-
-
-
-
-
-
+#Plot concentration and load data for all sites
+#Group by water year
 
 #Create two r objects for frozen and non-frozen periods
-data_df4 <-filter(data_df3, frozen==FALSE)
+data_df3_frozen <-filter(data_df3, frozen==TRUE)
 
-data_df5 <-filter(data_df3, frozen==TRUE)
-
-
-
-
-
-# From here you can change the group_by columns to select how to perform summary
-# select is how to include or exclude (-) columns by name
-# filter is how to make the data frame shorter by including certain cases (frozen/non frozen)
-# summarize(), summarize_all(), summarize_at() can include a variety of additional metrics
-# Medians, means, sum, etc. 
-
+data_df3_nonfrozen <-filter(data_df3, frozen==FALSE)
 
 
 
@@ -163,7 +147,7 @@ ConcByYear_nonFrozen_boxlist<-list()
 var_i <- 1
 for (var_i in 1:length(concvars)){
   
-  ConcByYear_nonFrozen_boxlist[[var_i]] <- ggplot(data=data_df4, aes_string(x="wateryear", y=concvars[var_i], group="wateryear", color="wateryear", fill="wateryear")) +
+  ConcByYear_nonFrozen_boxlist[[var_i]] <- ggplot(data=data_df3_nonfrozen, aes_string(x="wateryear", y=concvars[var_i], group="wateryear", color="wateryear", fill="wateryear")) +
     scale_y_log10() +
     geom_jitter(width = .1, size=1, alpha=.5, shape=16) + 
     geom_boxplot(alpha=0.2, outlier.shape = NA) +
@@ -190,7 +174,7 @@ ConcByYear_Frozen_boxlist<-list()
 var_i <- 1
 for (var_i in 1:length(concvars)){
   
-  ConcByYear_Frozen_boxlist[[var_i]] <- ggplot(data=data_df5, aes_string(x="wateryear", y=concvars[var_i], group="wateryear", color="wateryear", fill="wateryear")) +
+  ConcByYear_Frozen_boxlist[[var_i]] <- ggplot(data=data_df3_frozen, aes_string(x="wateryear", y=concvars[var_i], group="wateryear", color="wateryear", fill="wateryear")) +
     scale_y_log10() +
     geom_jitter(width = .1, size=1, alpha=.5, shape=16) + 
     geom_boxplot(alpha=0.2, outlier.shape = NA) +

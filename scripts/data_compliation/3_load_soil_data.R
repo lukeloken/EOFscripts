@@ -36,24 +36,15 @@ soil_per <- filter(soil_df, Type=='Spring') %>%
   mutate(`P_Sand_0-15` = CombineDepthPercent(P_Sand_05, Bulk_Den_05, 5, P_Sand_15, Bulk_Den_15, 10),
          `P_Silt_0-15` = CombineDepthPercent(P_Silt_05, Bulk_Den_05, 5, P_Silt_15, Bulk_Den_15, 10),
          `Bulk_Den_0-15` = Bulk_Den_05/3 + Bulk_Den_15*2/3) %>%
-  tidyr::gather(variable, value, 3:18) 
+  tidyr::gather(variable, value, 3:18) %>%
+  separate(variable, into=c("variable1", "variable2", "depth"), sep='_') %>%
+  unite(variable, variable1, variable2) %>%
+  spread(variable, value) 
 
 #Now need to split (opposite of unite)
   
 
-soil_per$`P_Sand_0-15` + soil_per$`P_Silt_0-15` + soil_per$`P_Clay_0-15`
-
-soil_0_15 <- filter(soil_df, Depth =="0-15") 
-soil_05 <- filter(soil_df, Depth =="05") 
-soil_15 <- filter(soil_df, Depth =="15") 
-
-soil_0_15$P_Clay
-P_Clay_0_15 
-
-P_Clay_15 <-soil_15$P_Clay
-P_Clay_05 <-soil_05$P_Clay
-
-ggplot(soil_df, aes(x=P_Clay, y=P_Silt)) +
+ggplot(soil_per, aes(x=P_Clay, y=(P_Silt+P_Sand))) +
   geom_point()
 
 

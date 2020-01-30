@@ -2,6 +2,11 @@
 
 #Plot concentration and load data for all sites
 #Group by water year
+#This script uses
+
+data_df3 <- readRDS(file=(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_conc_allsites.rds" ))))
+
+
 
 #Create two r objects for frozen and non-frozen periods
 data_df3_frozen <-filter(data_df3, frozen==TRUE)
@@ -9,11 +14,43 @@ data_df3_frozen <-filter(data_df3, frozen==TRUE)
 data_df3_nonfrozen <-filter(data_df3, frozen==FALSE)
 
 
+# What do you want to plot?
+# choices are names(data_df3)
+
+#Identify load variables
+loadvars <- c('suspended_sediment_load_pounds', 
+              'chloride_load_pounds',
+              'no2_no3n_load_pounds', 
+              'ammonium_n_load_pounds',
+              'tkn_unfiltered_load_pounds', 
+              'orthophosphate_load_pounds',
+              'tp_unfiltered_load_pounds',
+              'total_nitrogen_load_pounds',
+              'organic_nitrogen_load_pounds',
+              'toc_load_pounds',
+              'doc_load_pounds')
+
+#Identify concentration variables
+concvars <- c('suspended_sediment_conc_mgL', 
+              'chloride_conc_mgL',
+              'no2_no3n_conc_mgL', 
+              'ammonium_n_conc_mgL',
+              'tkn_unfiltered_conc_mgL', 
+              'orthophosphate_conc_mgL',
+              'tp_unfiltered_conc_mgL',
+              'total_nitrogen_conc_mgL',
+              'organic_nitrogen_conc_mgL',
+              'toc_conc_mgL',
+              'doc_conc_mgL')
+
+#Identify rain variables
+rainvars <-c("rain", "duration", "Ievent", "I5", "I10", "I15", "I30", "I60",
+             "energy_m1", "erosivity_m1", "energy_m2", "erosivity_m2")
+
 
 
 #########################################
 # playing with plotting
-# this will go to its own script later
 #########################################
 
 

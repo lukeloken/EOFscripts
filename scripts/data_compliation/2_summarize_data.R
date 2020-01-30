@@ -1,34 +1,7 @@
 
 #Summarize storm event load data for all sites
 
-#This is where the data live on Luke's computer
-path_to_data <- "P:/0301"
-#This is the location on Luke's computer where the figures are made
-path_to_results <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth"
-
-
 print(path_to_data)
-
-#load libraries
-#not sure which ones are needed for only data summary
-library(drake)
-library(plyr)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(ggfortify)
-library(RColorBrewer)
-library(viridis)
-library(gridExtra)
-library(lubridate)
-library(corrplot)
-library(PerformanceAnalytics)
-
-#custom functions needed from git rep
-source('scripts/functions/fxns_data_compilation.R')
-source('scripts/functions/g_legend.R')
-
-
 
 #Load the rds file from the P drive
 #This file was created using the "1_load_all_data.R" script
@@ -123,14 +96,6 @@ data_wateryear_summary
 # this will go to its own script later
 #########################################
 
-
-library(ggpubr)
-
-ggplot(data=data_df2, aes_string(x="sum_runoff", y=loadvars[1], group="wateryear", color="wateryear")) +
-  geom_point() +
-  stat_smooth(method = "lm", se=F) +
-  facet_wrap(~site, scales='free') +
-  theme_bw()
 
 
 LoadByRunnoff_plotlist <- list()

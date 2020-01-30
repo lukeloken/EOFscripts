@@ -12,23 +12,9 @@ soil_dates<-data.frame(Site = c("WI-01", "WI-02", "WI-03", "WI-04", "WI-05", "OH
 
 unique(soil_df$Depth)
 
-soil_spring <- soil_df %>%
-  dplyr::filter(Type == "Spring") %>%
-  left_join(soil_dates) %>%
-  select(Site, Date, Depth) %>%
-  left_join(soil_df) %>%
-  group_by(Site, Depth, Manure) %>%
-  summarize_at(vars(P_Clay:NAG_nmol), mean, na.rm=T) %>%
-  select_if(~sum(!is.na(.)) > 0) 
-
-
-# soil_test <- soil_df %>%
-#   filter(Site =='IN-01', Depth %in% c("05", "15", "0-15"), Type=='Spring') %>%
-#   select(c(2:4,9:13)) %>%
-#   spread(key = Depth, value = P_Clay)
 
 #Calculate percent silt and sand for 0-15 combined depth
-soil_per <- filter(soil_df, Type=='Spring') %>%
+soil_df <- filter(soil_df, Type=='Spring') %>%
   select(Site, SamplePt, Depth, P_Clay, P_Silt, P_Sand, Bulk_Den) %>%
   gather(variable, value, -(Site:Depth)) %>%
   unite(temp, variable, Depth) %>%
@@ -37,9 +23,23 @@ soil_per <- filter(soil_df, Type=='Spring') %>%
          `P_Silt_0-15` = CombineDepthPercent(P_Silt_05, Bulk_Den_05, 5, P_Silt_15, Bulk_Den_15, 10),
          `Bulk_Den_0-15` = Bulk_Den_05/3 + Bulk_Den_15*2/3) %>%
   tidyr::gather(variable, value, 3:18) %>%
-  separate(variable, into=c("variable1", "variable2", "depth"), sep='_') %>%
+  separate(variable, into=c("variable1", "variable2", "Depth"), sep='_') %>%
   unite(variable, variable1, variable2) %>%
-  spread(variable, value) 
+  spread(variable, value) %>%
+  mutate(Type = 'Spring') %>%
+  full_join(soil_df[,-which(names(soil_df) %in% c("P_Clay", "P_Silt", "P_Sand", "Bulk_Den", "Type", "Project_Year", "SampleID"))])
+
+
+soil_spring <- soil_df %>%
+  dplyr::filter(Type == "Spring") %>%
+  left_join(soil_dates) %>%
+  select(Site, Date, Depth) %>%
+  left_join(soil_df) %>%
+  dplyr::group_by(Site, Depth, Manure) %>%
+  summarize_at(vars(P_Clay:NAG_nmol), mean, na.rm=T) %>%
+  select_if(~sum(!is.na(.)) > 0) 
+
+
 
 #Now need to split (opposite of unite)
   
@@ -48,21 +48,31 @@ ggplot(soil_per, aes(x=P_Clay, y=(P_Silt+P_Sand))) +
   geom_point()
 
 
-soilvars <- names(soil_spring[3:ncol(soil_spring)])
+soilvars <- names(soil_spring)[3:ncol(soil_spring)]
+soilvars<-soilvars[-which(soilvars %in% c('Lat', 'Long', 'Manure'))]
 
 i=1
-soil_dots_list<- list()
+soil_dots_list <- list()
+soil_box_list <- list()
 
-for (i in 2:length(soilvars)){
+for (i in 1:length(soilvars)){
 soil_dots_list[[i]] <- ggplot(data=soil_spring, 
                               aes_string(x="Site", y=soilvars[i], group="Depth")) +
   geom_point(aes(col=Depth)) +
   theme_bw() +
-  theme(axis.title.x = element_blank(), legend.position='none')
+  theme(axis.title.x = element_blank(), legend.position='none') +
+  facet_wrap(~Manure, scales='free_x')
+
+soil_box_list[[i]] <- ggplot(data=soil_spring, 
+                              aes_string(x="Manure", y=soilvars[i])) +
+  geom_boxplot(aes(fill=Manure)) +
+  theme_bw() +
+  theme(axis.title.x = element_blank(), legend.position='none') 
+
 
 }
 
-plot_withlegend <- soil_dots_list[[1]] + 
+plot_withlegend <- soil_dots_list[[2]] + 
   theme(legend.position="bottom") +
   guides(color = guide_legend(nrow = 1, title.position='top', title.hjust=0.5)) 
 
@@ -72,9 +82,15 @@ rm(plot_withlegend)
 
 plot_grid <- grid.arrange(grobs=soil_dots_list, ncol=4, as.table = F)
 
-grid.arrange(plot_grid, mylegend, nrow=2, heights=c(15,1))
+soil_dots_list[[length(soil_dots_list)+1]] <- mylegend
 
+png(file_out(file.path(path_to_results, "Figures", "Soil", "Spring2016.png")), res=400, width=12, height=10, units='in')
 
+grid.arrange(grobs=soil_dots_list, ncol=4, as.table = F)
+
+# grid.arrange(plot_grid, mylegend, nrow=2, heights=c(15,1))
+
+dev.off()
 
 
 #Copy and paste from old code
@@ -82,7 +98,7 @@ grid.arrange(plot_grid, mylegend, nrow=2, heights=c(15,1))
 
 #PCA
 
-pca_df<-soil_spring[,soilvars]
+pca_df<-soil_spring[,c("Manure", soilvars)]
 Manure_temp <- factor(pca_df$Manure, c('Manure', "No Manure"))
 Manure_temp <- as.numeric(Manure_temp)
 Manure_temp[which(Manure_temp == 2)] <- 0

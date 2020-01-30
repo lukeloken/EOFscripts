@@ -67,7 +67,9 @@ data_df3 <- bind_cols(data_df2, conc_df)
 
 #save rds file to the P drive
 #This file was created using the "1_load_all_data.R" script
-saveRDS(data_df , file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_conc_allsites.rds" ))))
+saveRDS(data_df3 , file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_conc_allsites.rds" ))))
+
+write.csv(data_df3, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_conc_allsites.csv" ))), row.names=F)
 
 
 #Calculate means for all variables by site, wateryear, and period (before/after) treatment

@@ -137,4 +137,4 @@ rm(file_site_name, folder, folder_nu, folders, mod_files, name_length, recent_fo
 
 saveRDS(data_df, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites.rds" ))))
 
-write.csv(data_df, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites.csv" ))))
+write.csv(data_df, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites.csv" ))), row.names=F)

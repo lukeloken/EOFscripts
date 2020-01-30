@@ -1,16 +1,48 @@
 
-#Loop through all site folders and load edge of field runoff data
+#Summarize storm event load data for all sites
 
-#This is where the data live
+#This is where the data live on Luke's computer
+path_to_data <- "P:/0301"
+#This is the location on Luke's computer where the figures are made
+path_to_results <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth"
+
+
 print(path_to_data)
 
+#load libraries
+#not sure which ones are needed for only data summary
+library(drake)
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggfortify)
+library(RColorBrewer)
+library(viridis)
+library(gridExtra)
+library(lubridate)
+library(corrplot)
+library(PerformanceAnalytics)
+
+#custom functions needed from git rep
+source('scripts/functions/fxns_data_compilation.R')
+source('scripts/functions/g_legend.R')
+
+
+
+#Load the rds file from the P drive
+#This file was created using the "1_load_all_data.R" script
+data_df <- readRDS(file=(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites.rds" ))))
+
+
+#Test to make sure data are loaded
 if (exists("data_df")){
   print("Object data_df exists. Great job!!! You may proceed")
 } else {
-  stop ("no data loaded into R environment. Check 1_load_all_data.R script")
+  stop ("no data loaded into R environment. Check 1_load_all_data.R script and path_to_data")
 }
 
-
+#Identify load variables
 loadvars <- c('suspended_sediment_load_pounds', 
               'chloride_load_pounds',
               'no2_no3n_load_pounds', 
@@ -23,6 +55,7 @@ loadvars <- c('suspended_sediment_load_pounds',
               'toc_load_pounds',
               'doc_load_pounds')
 
+#Identify concentration variables
 concvars <- c('suspended_sediment_conc_mgL', 
               'chloride_conc_mgL',
               'no2_no3n_conc_mgL', 
@@ -35,32 +68,35 @@ concvars <- c('suspended_sediment_conc_mgL',
               'toc_conc_mgL',
               'doc_conc_mgL')
 
+#Identify rain variables
 rainvars <-c("rain", "duration", "Ievent", "I5", "I10", "I15", "I30", "I60",
              "energy_m1", "erosivity_m1", "energy_m2", "erosivity_m2")
 
-
+# Calculate storm mid date. 
+# Remove other date time objects
 data_df2 <- data_df %>%
   mutate(site = as.character(site),
          storm_middate = storm_start + difftime(storm_end, storm_start, units='secs')/2) %>%
   mutate(wateryear = as.factor(getWY (storm_middate))) %>%
   select(-file_id, -unique_storm_number, -sub_storms, -rain_startdate, -rain_enddate, -storm_start, -storm_end, -sample_end, -sample_start, -ant_discharge_date)
 
-#constants for converstions from load (pounds) and volume (cf) to concentration (mg/L)
-453592 # mg per pound
-28.3168 # Liters per cubic foot
+# constants for converstions from load (pounds) and volume (cf) to concentration (mg/L)
+# 453592 mg per pound
+# 28.3168 Liters per cubic foot
 
 #Calculate concentration (mg per L) from load (pounds) and runoff volume (cf)
 conc_df <- data.frame(sapply(data_df2[,loadvars], function (x) x/data_df2$runoff_volume*453592/28.3168))
 colnames(conc_df) <- concvars
-rownames(conc_df) <- NULL
 
+#Bind concentration data frame to bigger data frame
 data_df3 <- bind_cols(data_df2, conc_df)
 
-#Subste to non-frozen conditions
+#Create two r objects for frozen and non-frozen periods
 data_df4 <-filter(data_df3, frozen==FALSE)
 
 data_df5 <-filter(data_df3, frozen==TRUE)
 
+#Calculate means for all variables by site, wateryear, and period (before/after) treatment
 data_wateryear_summary <- data_df2 %>%
   group_by (site, wateryear, period) %>%
   select(-storm_middate) %>%
@@ -70,8 +106,24 @@ data_wateryear_summary <- data_df2 %>%
 data_wateryear_summary
 
 
-#playing with plotting
-#this will go to its own script later
+
+
+# From here you can change the group_by columns to select how to perform summary
+# select is how to include or exclude (-) columns by name
+# filter is how to make the data frame shorter by including certain cases (frozen/non frozen)
+# summarize(), summarize_all(), summarize_at() can include a variety of additional metrics
+# Medians, means, sum, etc. 
+
+
+
+
+
+#########################################
+# playing with plotting
+# this will go to its own script later
+#########################################
+
+
 library(ggpubr)
 
 ggplot(data=data_df2, aes_string(x="sum_runoff", y=loadvars[1], group="wateryear", color="wateryear")) +

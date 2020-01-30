@@ -134,3 +134,7 @@ data_df <- data_df %>%
 
 rm(allsites_list, data_i, file_site_list, statesites_list)
 rm(file_site_name, folder, folder_nu, folders, mod_files, name_length, recent_folder, rundate_folders, rundates, state, state_nu, state_tz, states, tables, badvars, NAs, loadvars)
+
+saveRDS(data_df, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites.rds" ))))
+
+write.csv(data_df, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites.csv" ))))

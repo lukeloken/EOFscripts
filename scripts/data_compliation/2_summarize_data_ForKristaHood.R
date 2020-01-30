@@ -1,9 +1,12 @@
 
 #Summarize storm event load data for all sites
 
-#This is where the data live on Luke's computer
+# This is where the data live on Luke's computer.
+# You  need to match this to where on your computer the data folder is located
 path_to_data <- "P:/0301"
-#This is the location on Luke's computer where the figures are made
+
+# This is the location on Luke's computer where the figures are made
+# Probably should change this to a location where you want your results/figures to go. 
 path_to_results <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth"
 
 
@@ -129,7 +132,16 @@ data_wateryear_summary <- data_df2 %>%
   filter(frozen == FALSE) %>% 
   summarize_all(mean, na.rm=T)
 
+
 data_wateryear_summary
+
+
+#Save RDS file (R file)
+# This will save the file within the path_to_results/data_summary folder. 
+saveRDS(data_wateryear_summary, file=(file_out(file.path(path_to_results, "data_summary", "annual_loads_allsites.rds" ))))
+
+#Also can save a csv file if you prefer
+write.csv(data_wateryear_summary, file=(file_out(file.path(path_to_results, "data_summary", "annual_loads_allsites.csv" ))), row.names = F)
 
 
 

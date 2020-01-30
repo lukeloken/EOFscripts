@@ -103,7 +103,7 @@ LoadByRunnoff_plotlist <- list()
 var_i <- 11
 for (var_i in 1:length(loadvars)){
   
-  LoadByRunnoff_plotlist[[var_i]] <- ggplot(data=data_df2, aes_string(x="sum_runoff", y=loadvars[var_i], group="wateryear", color="wateryear", fill="wateryear")) +
+  LoadByRunnoff_plotlist[[var_i]] <- ggplot(data=data_df3, aes_string(x="sum_runoff", y=loadvars[var_i], group="wateryear", color="wateryear", fill="wateryear")) +
   scale_x_log10() +
   scale_y_log10() +
   geom_point(aes(shape=frozen), size=2) +
@@ -172,7 +172,7 @@ RainByRunnoff_plotlist <- list()
 var_i <- 1
 for (var_i in 1:length(rainvars)){
   
-  RainByRunnoff_plotlist[[var_i]] <- ggplot(data=data_df2, aes_string(x="sum_runoff", y=rainvars[var_i], group="wateryear", color="wateryear", fill="wateryear")) +
+  RainByRunnoff_plotlist[[var_i]] <- ggplot(data=data_df3, aes_string(x="sum_runoff", y=rainvars[var_i], group="wateryear", color="wateryear", fill="wateryear")) +
     scale_x_log10() +
     scale_y_log10() +
     geom_point(aes(shape=frozen), size=2) +

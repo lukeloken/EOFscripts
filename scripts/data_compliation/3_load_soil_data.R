@@ -1,20 +1,24 @@
 
+#load soil quality/health data.
+#Input is one or more csv files from UW-Green Bay and Purdue
 
 
 soil_df <- read.csv(file_in(file.path(path_to_data, 'soil', 'raw_data', "EoF_SoilData_2016-2017.csv")), header=T, stringsAsFactors = F)
 
-str(soil_df)
+#When more than one file is included, add code here
 
-unique(soil_df$Site)
-
+#First file is missing dates
+#These are for the Spring 2016 data only
 soil_dates<-data.frame(Site = c("WI-01", "WI-02", "WI-03", "WI-04", "WI-05", "OH-01", "MI-01", "MI-02", "IN-01", "IN-02", "NY-01", "NY-02", "NY-03", "NY-04" ), 
-                       Date = as.Date(c("2016-06-21", "2016-06-21", "2016-06-21", "2016-06-22", "2016-06-22", "2016-06-14", "2016-06-14", "2016-06-14", "2016-06-13", "2016-06-13", "2016-06-16", "2016-06-16", "2016-06-16", "2016-06-16" )))
-
-unique(soil_df$Depth)
+                       Date = as.Date(c("2016-06-21", "2016-06-21", "2016-06-21", "2016-06-22", "2016-06-22", "2016-06-14", "2016-06-14", "2016-06-14", "2016-06-13", "2016-06-13", "2016-06-16", "2016-06-16", "2016-06-16", "2016-06-16" ))) 
+soil_dates$Type <- rep('Spring', nrow(soil_dates))
+  
+#Add dates to spring
+soil_df <- full_join(soil_dates, soil_df) 
 
 
 #Calculate percent silt and sand for 0-15 combined depth
-soil_df <- filter(soil_df, Type=='Spring') %>%
+soil_spring <- filter(soil_df, Type=='Spring') %>%
   select(Site, SamplePt, Depth, P_Clay, P_Silt, P_Sand, Bulk_Den) %>%
   gather(variable, value, -(Site:Depth)) %>%
   unite(temp, variable, Depth) %>%
@@ -26,49 +30,54 @@ soil_df <- filter(soil_df, Type=='Spring') %>%
   separate(variable, into=c("variable1", "variable2", "Depth"), sep='_') %>%
   unite(variable, variable1, variable2) %>%
   spread(variable, value) %>%
-  mutate(Type = 'Spring') %>%
-  full_join(soil_df[,-which(names(soil_df) %in% c("P_Clay", "P_Silt", "P_Sand", "Bulk_Den", "Type", "Project_Year", "SampleID"))])
+  mutate(Type = 'Spring') 
 
+soil_df2 <- left_join(soil_df[,-which(names(soil_df) %in% c("P_Clay", "P_Silt", "P_Sand", "Bulk_Den", "Project_Year", "SampleID"))], soil_spring)
 
-soil_spring <- soil_df %>%
-  dplyr::filter(Type == "Spring") %>%
-  left_join(soil_dates) %>%
-  select(Site, Date, Depth) %>%
-  left_join(soil_df) %>%
-  dplyr::group_by(Site, Depth, Manure) %>%
-  summarize_at(vars(P_Clay:NAG_nmol), mean, na.rm=T) %>%
-  select_if(~sum(!is.na(.)) > 0) 
-
-
-
-#Now need to split (opposite of unite)
+#summarize Spring data by site/date
+#Calculate means of reps
+soil_df3 <- soil_df2 %>%
+  filter(Type == 'Spring') %>%
+  mutate(Depth = factor(Depth, c( '05', '0-15', '15', '30'))) %>%
+  dplyr::group_by(Site, Date, Depth, Manure) %>%
+  summarize_at(vars(OM:P_Silt), mean, na.rm=T) %>%
+  select_if(~sum(!is.na(.)) > 0)
   
 
-ggplot(soil_per, aes(x=P_Clay, y=(P_Silt+P_Sand))) +
-  geom_point()
 
 
-soilvars <- names(soil_spring)[3:ncol(soil_spring)]
-soilvars<-soilvars[-which(soilvars %in% c('Lat', 'Long', 'Manure'))]
+
+
+
+
+soilvars <- names(soil_df3)[5:ncol(soil_df3)]
 
 i=1
 soil_dots_list <- list()
 soil_box_list <- list()
 
 for (i in 1:length(soilvars)){
-soil_dots_list[[i]] <- ggplot(data=soil_spring, 
+soil_dots_list[[i]] <- ggplot(data=soil_df3, 
                               aes_string(x="Site", y=soilvars[i], group="Depth")) +
-  geom_point(aes(col=Depth)) +
+  geom_jitter(aes(col=Depth), width=.15,height=0, size=1.5) +
+  # geom_point(aes(col=Depth)) +
   theme_bw() +
   theme(axis.title.x = element_blank(), legend.position='none') +
   facet_wrap(~Manure, scales='free_x')
 
-soil_box_list[[i]] <- ggplot(data=soil_spring, 
-                              aes_string(x="Manure", y=soilvars[i])) +
-  geom_boxplot(aes(fill=Manure)) +
+# soil_box_list[[i]] <- ggplot(data=soil_df3, 
+  #                             aes_string(x="Manure", y=soilvars[i])) +
+  # geom_jitter(aes(col=Manure), alpha=.5, width=.2, height=0) + 
+  # geom_boxplot(aes(fill=Manure), alpha=.3, width=.7, outlier.shape = NA) +
+  # theme_bw() +
+  # theme(axis.title.x = element_blank(), legend.position='none') 
+
+soil_box_list[[i]] <- ggplot(data=soil_df3, 
+       aes_string(x="Manure", y=soilvars[i], fill='Depth', col='Depth')) +
+  geom_point(position=position_jitterdodge(jitter.width=.1, jitter.height=0), alpha=.5) + 
+  geom_boxplot(alpha=.3, width=.5, outlier.shape = NA) +
   theme_bw() +
   theme(axis.title.x = element_blank(), legend.position='none') 
-
 
 }
 
@@ -93,9 +102,35 @@ grid.arrange(grobs=soil_dots_list, ncol=4, as.table = F)
 dev.off()
 
 
+
+
+
+#Boxplots
+plot_withlegend <- soil_box_list[[2]] + 
+  theme(legend.position="bottom") +
+  guides(color = guide_legend(nrow = 1, title.position='top', title.hjust=0.5)) +
+  labs(fill = 'Soil depth (cm)', color = 'Soil depth (cm)')
+
+mylegend<-g_legend(plot_withlegend)
+
+rm(plot_withlegend)
+
+box_grid <- grid.arrange(grobs=soil_box_list, ncol=6, as.table = F)
+
+soil_box_list[[length(soil_box_list)+1]] <- mylegend
+
+png(file_out(file.path(path_to_results, "Figures", "Soil", "Boxplots_Spring2016.png")), res=400, width=12, height=8, units='in')
+
+# grid.arrange(grobs=soil_box_list, ncol=5, as.table = F)
+
+grid.arrange(box_grid, mylegend, nrow=2, heights=c(15,1))
+
+dev.off()
+
+
+
+###################################
 #Copy and paste from old code
-
-
 #PCA
 
 pca_df<-soil_spring[,c("Manure", soilvars)]

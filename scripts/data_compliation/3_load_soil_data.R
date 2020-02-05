@@ -132,15 +132,16 @@ dev.off()
 ###################################
 #Copy and paste from old code
 #PCA
+# ##################################
 
-pca_df<-soil_spring[,c("Manure", soilvars)]
+pca_df<-soil_df3[,c("Depth", "Manure", soilvars)]
 Manure_temp <- factor(pca_df$Manure, c('Manure', "No Manure"))
 Manure_temp <- as.numeric(Manure_temp)
 Manure_temp[which(Manure_temp == 2)] <- 0
 pca_df$Manure_binary <- Manure_temp
 pca_df<-na.omit(pca_df)
 
-pca_df2 <- select(pca_df, -Manure)
+pca_df2 <- select(pca_df, -Manure, -Depth)
 
 pca <- prcomp(pca_df2, center = TRUE, scale. = TRUE, rank=6) 
 
@@ -220,16 +221,16 @@ par(mar=c(1.5,3,.5,.5), oma=c(2.5,1,0,0))
 par(mgp=c(2, .5, 0))
 
 
-p_1v2<-autoplot(pca, x=2, y=1, data=pca_df, size=3, colour = "Manure",
+p_1v2<-autoplot(pca, x=2, y=1, data=pca_df, size=3, colour = "Manure", shape = 'Depth',
                 loadings = TRUE, loadings.colour = 'grey', 
                 loadings.label = TRUE, loadings.label.colour='black', 
                 loadings.label.size = 3) + 
   scale_color_manual(values=c('#d95f02', '#1b9e77')) + 
+  scale_shape_manual(values=c(1,16)) + 
   theme_bw() + 
-  theme(legend.position=c(0.15,0.12), 
+  theme(legend.position='none', 
         panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        legend.title = element_blank())
+        panel.grid.minor = element_blank())
 
 print(p_1v2)  
 
@@ -243,13 +244,14 @@ par(mar=c(1.5,3,.5,.5), oma=c(2.5,1,0,0))
 par(mgp=c(2, .5, 0))
 
 
-p_3v2<-autoplot(pca, x=3, y=1, data=pca_df, size=3, colour = "Manure",
+p_3v2<-autoplot(pca, x=3, y=1, data=pca_df, size=3, colour = "Manure", shape = 'Depth',
                 loadings = TRUE, loadings.colour = 'grey', 
                 loadings.label = TRUE, loadings.label.colour='black', 
                 loadings.label.size = 3) + 
   scale_color_manual(values=c('#d95f02', '#1b9e77')) + 
+  scale_shape_manual(values=c(1,16)) + 
   theme_bw() + 
-  theme(legend.position='none', panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  theme(legend.position='bottom', panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
 print(p_3v2)  
 
@@ -257,12 +259,15 @@ dev.off()
 
 
 #plot first three axes of PCA
-png(file_out(file.path(path_to_results, "Figures", "Soil", "PredictorVarsPCA_Spring2016_v3.png")), res=400, width=10, height=5, units='in')
+png(file_out(file.path(path_to_results, "Figures", "Soil", "PredictorVarsPCA_Spring2016_v3.png")), res=400, width=5, height=10, units='in')
 par(mfrow=c(1,1))
 par(mar=c(1.5,3,.5,.5), oma=c(2.5,1,0,0))
 par(mgp=c(2, .5, 0))
 
 grid.arrange(p_1v2, p_3v2, ncol=2)
+
+grid.newpage()
+grid.draw(rbind(ggplotGrob(p_1v2), ggplotGrob(p_3v2), size = "last"))
 
 dev.off()
 

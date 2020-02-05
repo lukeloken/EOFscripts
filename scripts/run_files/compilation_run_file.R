@@ -16,5 +16,7 @@ source('scripts/data_compliation/2_summarize_data.R')
 
 #load soil data
 # as of January 2020, this only includes spring 2016 and fall 2017 data
+source('scripts/3_load_soil_data.R')
 
-# source('scripts/3_load_soil_data.R')
+#plot load and concentration data by water year and runoff volume
+source('scripts/data_compliation/4_plot_stormrunnoff_data.R')

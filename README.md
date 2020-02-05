@@ -8,7 +8,7 @@ Processed data will be archived in the Upper Midwest Water Science Center P driv
 These data have already been processed using the `processing_run_file.R` scripts
 These are now ready for across site comparisons
 ```
-path_to_data <- "P:/0301/data"
+path_to_data <- "P:/0301"
 path_to_data <- "M:/NonPoint Evaluation/GLRI Edge-of-field/R-analysis"
 ```
 

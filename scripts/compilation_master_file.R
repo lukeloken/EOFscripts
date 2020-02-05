@@ -3,7 +3,10 @@
 # Master file for running all cross-site comparisons
 
 # path_to_data <- "M:/NonPoint Evaluation/GLRI Edge-of-field/R-analysis"
+# This folder contains multiple sub-folders with 'analysis', 'soil' etc. 
 path_to_data <- "P:/0301"
+
+#Currently figures are saved here. This folder needs a subfolder titled "Figures"  
 path_to_results <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth"
 
 #load libraries
@@ -21,7 +24,5 @@ library(gridExtra)
 library(lubridate)
 library(corrplot)
 library(PerformanceAnalytics)
-
-
 
 source('scripts/run_files/compilation_run_file.R')

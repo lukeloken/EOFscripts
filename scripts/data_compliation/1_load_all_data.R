@@ -47,12 +47,19 @@ for (state_nu in 1:length(states)){
     
     mod_files <- tables[grepl("mod_dat.csv" , tables)]
     
+
+    
     
     if (length(mod_files) == 0){
       warning(paste("folder contains no `mod_dat.csv` files.", toString(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "tables" ))))
     } else { 
       if (length(mod_files)>1){
-        warning(paste("More than 1 file listed with 'mod_dat.csv'. Combined multiple files. Check folder:",  toString(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "tables" ))))
+        
+        mod_files <- mod_files[which.min(nchar(mod_files))]
+        mod_name <- tail(unlist(strsplit(mod_files[1], split='/')),1)
+        
+        warning(paste("More than 1 file listed with 'mod_dat.csv'. Used file with shortest name:", mod_name, "    Check folder:",  toString(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "tables" ))))
+        
       } 
       
       #Load site name, timezone, and other metadata for the site
@@ -130,7 +137,8 @@ var=1
 for (var in 1:length(badvars)){
   NAs <- which(is.na(data_df[,loadvars[var]]))
   data_df[,loadvars[var]][NAs] <- data_df[,badvars[var]][NAs]
-  print(paste ("Replaced ", toString(length(NAs)), "NAs in variable ", toString(loadvars[var])))
+  # print(paste0("Replaced ", toString(length(NAs)), " NAs in col ", toString(loadvars[var]), " with col ", toString(badvars[var])))
+  print(paste0("Column ", toString(loadvars[var]), " contained ", toString(length(NAs)), " NAs. Replaced with ", toString(badvars[var])))
     }
 
 data_df <- data_df %>%

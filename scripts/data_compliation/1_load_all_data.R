@@ -9,6 +9,7 @@ allsites_list <-list()
 
 #Identify how many states have data
 states <- list.files(file.path(path_to_data, "analysis"))
+# states <- list.files(file.path(path_to_data, "analysis"))[1:2]
 
 state_nu <- 1
 for (state_nu in 1:length(states)){
@@ -104,7 +105,9 @@ loadvars <- c('suspended_sediment_load_pounds',
               'total_nitrogen_load_pounds',
               'organic_nitrogen_load_pounds',
               'tp_unfiltered_load_pounds',
-              'no2_no3n_load_pounds')
+              'no2_no3n_load_pounds',
+              'total_nitrogen_load_pounds',
+              'organic_nitrogen_load_pounds')
 
 badvars <- c('Suspended.Sediment.Load..pounds', 
              'Chloride.Load..pounds',
@@ -116,7 +119,9 @@ badvars <- c('Suspended.Sediment.Load..pounds',
              'Total.Nitrogen.Load..in.pounds',
              'Organic.Nitrogen.Load..pounds',
              'total_phosphorus_unfiltered_load_pounds',
-             'no2_no3_n_load_pounds')
+             'no2_no3_n_load_pounds', 
+             'total_nitrogen_computed_load_pounds',
+             'organic_nitrogen_computed_load_pounds')
 
 # combine columns with the same data but differnet names
 # For some reason tidy:unite was not working for me

@@ -64,8 +64,8 @@ for (i in 1:length(date.vars)) {
 # exclude storms that have a 1 in exclude, are estimated, or are discrete samples
 storms <- filter(wq, exclude == 0) %>%
   #filter(storm == 0) %>% #Event or Baseflow Toggle for Tile sites
-  filter(estimated == 0) #%>%
-  filter(discrete == 0) %>%
+  filter(estimated == 0) %>%
+  filter(discrete == 0) #%>%
   #filter(frozen == 0))
 
 # make "<" values equal to half of the censored value
@@ -73,7 +73,7 @@ storms <- filter(wq, exclude == 0) %>%
 # first, find which variables have a "<"
 # and replace with 0.5 * value
 if (!is.na(flagvars[1])){
-for (i in 1:length(flagvars)) {
+  for (i in 1:length(flagvars)) {
   flags <- grep('<', storms[, flagvars[i]])
   storms[flags, concvars[i]] <- 0.5*storms[flags, concvars[i]]
   print(paste0(length(flags), ' observations below detection limit for ', concvars[i]))

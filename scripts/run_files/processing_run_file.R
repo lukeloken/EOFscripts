@@ -1,7 +1,7 @@
 # Run this file to run all data processing/analysis steps
 
 # source the master file with all site-specific vars
-source('scripts/0_master_file.R', echo = F)
+source(file.path(site_folder,'approved_site_data','0_master_file.R'), echo = F)
 
 # source the test file to check inputs in 0_master_file
 source('scripts/data_processing/0_check_inputs.R')

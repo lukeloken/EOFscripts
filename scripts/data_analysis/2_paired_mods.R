@@ -54,7 +54,7 @@ for (i in 1:length(trt_vars)) {
   p2 <- ggplot(temp_dat, aes(x = datetime, y = stand_diff)) +
     geom_point(aes(color = period)) +
     theme_bw() +
-    scale_color_manual(values = c('black', 'red'), labels = c('before', 'after')) +
+    scale_color_manual(values = c('before' = 'black','after' = 'red')) +
     labs(x = '', y = 'Treatment - Control \n(standardized to calibration period)')
   
   # save figure 

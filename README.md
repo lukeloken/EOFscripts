@@ -22,7 +22,12 @@ path_to_data <- "P:/0301"
 
 ## Process raw data from each site individually 
 
-Each center has the ability to process and analysis their own data using the following functions. Their is a workflow script titled: master_run_file.R in the 'scripts' folder. 
+### updated by Rebecca Carvin and Samantha Oliver February 2020
+
+
+Each center has the ability to process and analysis their own data using the following functions. Their is a workflow script titled: `master_run_file.R` in the 'scripts' folder. Prior to running this script, user's must input site specific information in the `0_master_file.R` script. This includes information on site name, study type, time zones, dates, variable names, etc.. Basically all the meta information that goes along with the data file. 
+
+After loading the site specific info and the data files, the script will process the data and analyze it. A number of figures, output data tables will be saved within the git/repo folder on your computer. 
 
 
 ```

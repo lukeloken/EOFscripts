@@ -4,12 +4,18 @@ This repo contains scripts for processin edge of field water quality data.
 
 ## Compile processed data from all sites
 
-Processed data will be archived in the Upper Midwest Water Science Center P drive
-These data have already been processed using the `processing_run_file.R` scripts
-These are now ready for across site comparisons
+### updated by Luke Loken February 2020
+
+Data that have been processed and saved to the P: Drive will be compiled for across site comparisons. Currently, individual site data are located in the P:drive/analysis folder by states and by sites. The "site_mod.csv" files from each site are bound, summarized, and plotted. 
+
+This processes uses the `comipilation_run_file.R`. It requires that a `path_to_data` object be set at before running. This will point to the main folder, which is currently the "P:/0301"
+
 ```
+# Current data location
 path_to_data <- "P:/0301"
-path_to_data <- "M:/NonPoint Evaluation/GLRI Edge-of-field/R-analysis"
+
+# Prior data location
+# path_to_data <- "M:/NonPoint Evaluation/GLRI Edge-of-field/R-analysis"
 ```
 
 

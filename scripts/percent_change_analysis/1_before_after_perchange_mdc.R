@@ -38,7 +38,7 @@ for (i in 1:length(responses)) {
   
 }
 # create a dataframe describing the residual models
-mdc <- data.frame(variable = clean_names,
+mdc <- data.frame(variable = responses,
                   model_fit = perc.var,
                   mdc = round(mdc.perc.nbefore, 0))
 

@@ -16,6 +16,8 @@ library(ggplot2)
 library(pdp)
 library(jtools)
 library(caret)
+library(bestglm)
+
 
 #custom function to be moved to other script
 not_all_na <- function(x) {!all(is.na(x))}
@@ -290,7 +292,8 @@ site_nu <- "WI-SW3"
   load.after <- c()
   
   glmlist<-list()
-  glmloglist<-list()
+  mlmlist<-list()
+  per.change.list <-list()
   
   for (i in 1:(length(responses)-1)) {
     
@@ -325,43 +328,32 @@ site_nu <- "WI-SW3"
     # Code is currently nested within the bigger script, which might need to change
     # #########################################
     
-    # get top model variables
+    # get top random forest varaibles to use for multilinear models 
     top.vars.before <- pdp::topPredictors(mod.before, n = 5)
     top.vars.after <- pdp::topPredictors(mod.after, n = 5)
     
     top.vars.both <- unique(c(top.vars.before, top.vars.after))
     
+    #Build equation for model expression
     mlm.equation <- as.formula(paste(responses[i], paste(top.vars.both, collapse = " + "), sep = " ~ "))
-    
-    mlm <- lm(mlm.equation, data = dat.mod)
-    summary(mlm)
-    anova(mlm)
-    plot( mlm$fitted.values)
-    plot(mlm$fitted.values, residuals(mlm), xlab='fitted values', ylab='residuals')
-    abline(h=0)
 
-  #subset model
+    #Full model all data
+    mlm <- lm(mlm.equation, data = dat.mod)
+
+    #subset model
     mlm.step <- step(mlm, direction = 'both', k=3)
     
-    plot(mlm$model[,1], mlm$fitted.values, xlab='obs', ylab='predictions', ylim=range(c(mlm$fitted.values, mlm.step$fitted.values)))
-    abline(0,1)
-    points(mlm.step$model[,1], mlm.step$fitted.values, col='red')
-    
-    legend('topleft', c(paste("r2 =", round(summary(mlm)$r.squared, 2)), paste("r2 =", round(summary(mlm.step)$r.squared, 2))), bty='n', text.col=c('black', 'red'))
-    
+    #Models based on before/after data separately
+    mlm.before <- lm(mlm.equation, data = dat.mod.before)
+    mlm.after <- lm(mlm.equation, data = dat.mod.after)
     
     
     #For bestglm, response variable is last column, predictor variables are all except last column
     data.glm <- dat.mod[c(top.vars.both, responses[i])]
-    
     data.glm.before <- dat.mod.before[c(top.vars.both, responses[i])]
     data.glm.after <- dat.mod.after[c(top.vars.both, responses[i])]
     
-    
-    library(bestglm)
-    
     glm<-bestglm(data.glm, family=gaussian, IC='BIC', nvmax=5)
-    glm
     
     glm.before<-bestglm(data.glm.before, family=gaussian, IC='BIC', nvmax=5)
     glm.before
@@ -369,27 +361,23 @@ site_nu <- "WI-SW3"
     glm.after<-bestglm(data.glm.after, family=gaussian, IC='BIC', nvmax=5)
     glm.after
     
+    #Pull R2 from model
+    mlm.r2.before <- summary(mlm.before)$r.squared
+    glm.r2.before <- summary(glm.before$BestModel)$r.squared
     
-    plot(glm$BestModel$model$y, glm$BestModel$fitted.values)
-    abline(0,1)
-
-    # glmlog<-bestglm(data.glm, family=gaussian, IC='BIC', nvmax=5)
-    
-    print(responses[i])
-    print(glm)
-    print(summary(glm))
-    glmlist[[i]]<-glm
-    
-    
-    mlm.before <- lm(mlm.equation, data = dat.mod.before)
-    summary(mlm.before)
-    anova(mlm.before)
-    plot(residuals(mlm.before))
-    plot(mlm.before$fitted.values, residuals(mlm.before), xlab='fitted values', ylab='residuals')
-    abline(h=0)
+    #Use models to predict before and after values
+    pred.mlm.before <- predict(mlm.before, dat.mod.before, interval = 'confidence')
+    pred.glm.before <- predict(glm.before$BestModel, dat.mod.before, interval='confidence')
     
     pred.mlm.after <- predict(mlm.before, dat.mod.after, interval = 'confidence')
     pred.glm.after <- predict(glm.before$BestModel, dat.mod.after, interval='confidence')
+    
+    #Bind models predictions with data for plotting
+    pred.mlm.before <- data.frame(obs = dat.mod.before[,responses[i]]) %>%
+      bind_cols(as.data.frame(pred.mlm.before))
+    
+    pred.glm.before <- data.frame(obs = dat.mod.before[,responses[i]]) %>%
+      bind_cols(as.data.frame(pred.glm.before))
     
     pred.mlm.after <- data.frame(obs = dat.mod.after[,responses[i]]) %>%
       bind_cols(as.data.frame(pred.mlm.after))
@@ -397,71 +385,103 @@ site_nu <- "WI-SW3"
     pred.glm.after <- data.frame(obs = dat.mod.after[,responses[i]]) %>%
       bind_cols(as.data.frame(pred.glm.after))
     
-    mlm_fig<-ggplot(data=pred.mlm.after, aes(x=obs, y=fit)) + 
+    #Convert to actual units and make percent change table
+    mlm.summary <- colSums(10^pred.mlm.after)
+    glm.summary <- colSums(10^pred.glm.after)
+    
+    per.change.table <- data.frame(matrix(ncol=4, nrow=2))
+    names(per.change.table) <- names(mlm.summary)
+    names(per.change.table)[1] <- c('model')
+    
+    per.change.table$model[1] <- 'mlm'
+    per.change.table$fit[1] <- round((mlm.summary['obs'] - mlm.summary['fit'])/mlm.summary['obs']*100)
+    per.change.table$lwr[1] <- round((-1)*(mlm.summary['upr'] - mlm.summary['obs'])/mlm.summary['obs']*100)
+    per.change.table$upr[1] <- round((-1)*(mlm.summary['lwr'] - mlm.summary['obs'])/mlm.summary['obs']*100)
+    
+    per.change.table$model[2] <- 'glm'
+    per.change.table$fit[2] <- round((glm.summary['obs'] - glm.summary['fit'])/glm.summary['obs']*100)
+    per.change.table$lwr[2] <- round((-1)*(glm.summary['upr'] - glm.summary['obs'])/glm.summary['obs']*100)
+    per.change.table$upr[2] <- round((-1)*(glm.summary['lwr'] - glm.summary['obs'])/glm.summary['obs']*100)
+    
+    
+    
+    #Save models and percent change table
+    per.change.list[[i]] <- per.change.table
+    names(per.change.list)[[i]] <-responses[i]
+    
+    glmlist[[i]]<-glm
+    mlmlist[[i]]<-mlm
+    
+    
+    #Plot simple scatterplots with errorbars to visualize model fits
+    mlm.fig.before<-ggplot(data=pred.mlm.before, aes(x=obs, y=fit)) + 
       geom_point() +
       geom_errorbar(aes(x=obs, ymin=lwr, ymax=upr)) +
       geom_abline() +
       theme_bw() +
+      # theme(axis.title.x=element_blank()) + 
       labs(y='multi-linear model fit',
-           x='obsered value')
+           x='') +
+      annotate("text", y= min(pred.mlm.before$lwr),
+               x =max(pred.mlm.before$obs),
+               label="before",hjust=1) +
+      annotate("text", y= max(pred.mlm.before$upr),
+               x =mean(c(min(pred.mlm.before$obs), max(pred.mlm.before$obs))),label=paste("r2 =", round(mlm.r2.before, 2)),hjust=0.5) 
     
-    glm_fig<-ggplot(data=pred.glm.after, aes(x=obs, y=fit)) + 
+    glm.fig.before<-ggplot(data=pred.glm.before, aes(x=obs, y=fit)) + 
       geom_point() +
       geom_errorbar(aes(x=obs, ymin=lwr, ymax=upr)) +
       geom_abline() +
       theme_bw() +
       labs(y='bestglm fit',
-           x='observed value')
+           x='observed value') +
+      annotate("text", y= min(pred.glm.before$lwr), 
+               x =max(pred.glm.before$obs),
+               label="before", hjust=1) +
+      annotate("text", y= max(pred.glm.before$upr),
+               x =mean(c(min(pred.glm.before$obs), max(pred.glm.before$obs))),label=paste("r2 =", round(glm.r2.before, 2)),hjust=0.5) 
     
-    grid.arrange(grobs=list(mlm_fig, glm_fig), nrow=1, top = 'Prediction of post-BMP loads using pre-BMP model', bottom = 'Prediction estimate +/- 95% confidence interval')
+    mlm.fig.after<-ggplot(data=pred.mlm.after, aes(x=obs, y=fit)) + 
+      geom_point() +
+      geom_errorbar(aes(x=obs, ymin=lwr, ymax=upr)) +
+      geom_abline() +
+      theme_bw() +
+      # theme(axis.title.x=element_blank()) + 
+      labs(y='multi-linear model fit',
+           x='') +
+      annotate("text", 
+               y= min(pred.mlm.after$lwr), 
+               x =max(pred.mlm.after$obs),
+               label="after",hjust=1, size=4) +
+      annotate("text", 
+               y= max(pred.mlm.after$upr),
+               x=mean(c(min(pred.mlm.after$obs), max(pred.mlm.after$obs))),
+               label=paste0("% change = ", round(per.change.table$fit[1], 2), " (", round(per.change.table$lwr[1], 2), " to ", round(per.change.table$upr[1], 2), ")"),
+               hjust=0.5, col="#e41a1c", size=4) 
     
-    glm_summary <- colSums(10^pred.glm.after)
-      
-      
-    per_change <- (glm_summary['obs'] - glm_summary['fit'])/glm_summary['obs']
-    per_change_upper <- (-1)*(glm_summary['upr'] - glm_summary['obs'])/glm_summary['obs']
-    per_change_lower <- (-1)*(glm_summary['lwr'] - glm_summary['obs'])/glm_summary['obs']
-    
-    
-    
-    # ggplot(data=pred.mlm.after, aes(x=10^obs, y=10^fit)) +
-    #   geom_point() +
-    #   geom_errorbar(aes(ymin=10^lwr, ymax=10^upr)) +
-    #   geom_abline() +
-    #   theme_bw()
-    # 
-    # ggplot(data=pred.glm.after, aes(x=10^obs, y=10^fit)) +
-    #   geom_point() +
-    #   geom_errorbar(aes(ymin=10^lwr, ymax=10^upr)) +
-    #   geom_abline() +
-    #   theme_bw()
-    
-    plot(dat.mod.after[,responses[i]], pred.mlm.after[,1], pch=16)
-    points(dat.mod.after[,responses[i]], pred.mlm.after[,2], pch=1)
-    points(dat.mod.after[,responses[i]], pred.mlm.after[,3], pch=1)
-    
-    points(dat.mod.after[,responses[i]], pred.glm.after[,1], col='red')
-    abline(0,1)
-    
-    diff.mlm <- 10^dat.mod.after[,responses[i]] - 10^pred.mlm.after
-    diff.mlm.percent <- diff.mlm/10^dat.mod.after[,responses[i]]
-    
-    diff.glm <- 10^dat.mod.after[,responses[i]] - 10^pred.glm.after
-    diff.glm.percent <- diff.glm/10^dat.mod.after[,responses[i]]
-    
-    summary(diff.mlm.percent)
-    summary(diff.glm.percent)
-    
-    percent.increase.mlm <- (sum(10^dat.mod.after[,responses[i]]) - sum(10^pred.mlm.after)) / sum(10^dat.mod.after[,responses[i]])
-    percent.increase.glm <- (sum(10^dat.mod.after[,responses[i]]) - sum(10^pred.glm.after)) / sum(10^dat.mod.after[,responses[i]])
+    glm.fig.after<-ggplot(data=pred.glm.after, aes(x=obs, y=fit)) + 
+      geom_point() +
+      geom_errorbar(aes(x=obs, ymin=lwr, ymax=upr)) +
+      geom_abline() +
+      theme_bw() +
+      labs(y='bestglm fit',
+           x='observed value') +
+      annotate("text", 
+               y= min(pred.glm.after$lwr), 
+               x =max(pred.glm.after$obs),
+               label="after", hjust=1, size=4) +
+      annotate("text", 
+               y= max(pred.glm.after$upr),
+               x=mean(c(min(pred.glm.after$obs), max(pred.glm.after$obs))),
+               label=paste0("% change = ", round(per.change.table$fit[2], 2), " (", round(per.change.table$lwr[2], 2), " to ", round(per.change.table$upr[2], 2), ")"),
+               hjust=0.5, col='#e41a1c', size=4) 
     
     
+    model.fig.fit <- grid.arrange(grobs=list(mlm.fig.before, mlm.fig.after,  glm.fig.before, glm.fig.after), nrow=2, top=responses[i])
     
+    ggsave(paste0('figures/',  responses[i], "_mlmprediction.png"), model.fig.fit, height=6, width=6, units='in')
     
-    boxplot(diff.mlm.percent, diff.glm.percent)
-    
-    
-    
+
     
     # #############################
     # resume other script

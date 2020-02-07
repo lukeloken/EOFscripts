@@ -34,17 +34,12 @@ path_to_results <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth"
 # Code largely uses the 'analysis_run_file.R' file that Sam Oliver generated to analyze each site individually
 # This code differs in that it processes all the sites serially. 
 
-
-# load predictors and responses for one site. two R objects are loaded. 
-# Will need to see how variable these are among sites
-load(file = 'P:/0301/analysis/WI/WI-SW3/results/2020-01-29-0851/cache/modvars.Rdata')
-
 #Currently the 'clean names' for WI-3 
-clean_names <- c('SS load (pounds)', 'Chloride load (pounds)',
-                 'NO2 + NO3 load (pounds)', 'Ammonium load (pounds)', 
-                 'TKN load (pounds)', 'Orthophosphate load (pounds)', 
-                 'TP load (pounds)', 'TN load (pounds)', 
-                 'Org N load (pounds)', 'Peak discharge (cfs)', 'Volume (cf)')
+# clean_names <- c('SS load (pounds)', 'Chloride load (pounds)',
+#                  'NO2 + NO3 load (pounds)', 'Ammonium load (pounds)', 
+#                  'TKN load (pounds)', 'Orthophosphate load (pounds)', 
+#                  'TP load (pounds)', 'TN load (pounds)', 
+#                  'Org N load (pounds)', 'Peak discharge (cfs)', 'Volume (cf)')
 
 
 #Load compiled data from P drive. 
@@ -60,17 +55,76 @@ all_sites <- unique(data_df$site)
 #Empty list to populate with percent change tables
 per.change.list.allsites<-list()
 
-site_nu <- "WI-SW4"
-# for (site_nu in all_sites){
-  
-  
-  #before step 0
+# site_nu <- "WI-SW4"
+
+# load predictors and responses for one site. two R objects are loaded. 
+# Will need to see how variable these are among sites
+# load(file = file.path(path_to_data, 'analysis/WI/WI-SW3/results/2020-01-29-0851/cache/modvars.Rdata'))
+# load(file = file.path(path_to_data, 'analysis/WI/WI-SW3/results/2020-01-29-0851/cache/modvars.Rdata'))
 
 
+#Identify how many states have data
+states <- list.files(file.path(path_to_data, "analysis"))
+# states <- list.files(file.path(path_to_data, "analysis"))[1:2]
+
+state_nu <- 1
+for (state_nu in 1:length(states)){
+  state <- states[state_nu]
+  
+  folders<-list.files(file.path(path_to_data, "analysis", state))
+  
+  #Create empty list for all sites within this state
+  statesites_list <- vector(mode="list", length=length(folders))
+  names(statesites_list) <- folders
+  
+  #Remove paired and tile folders
+  # folders <- folders[which(grepl('pair', folders)==FALSE)]
+  # folders <- folders[which(grepl('TL', folders)==FALSE)]
+  
+  
+  folder_nu<-1
+  for (folder_nu in 1:length(folders)){
+    #Folder name
+    #Also site name
+    folder<-folders[folder_nu]
+    
+    #Identify model files
+    rundate_folders<-list.files(file.path(path_to_data, "analysis", state, folder, "results"))
+    rundates <- as.Date(paste0(rundate_folders, "-01"), format="%Y-%m-%d")
+    recent_folder <- rundate_folders[which.max(rundates)]
+    
+    cache <- list.files(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "cache" ), full.names=T)
+    
+    modvars_files <- cache[grepl("modvars.Rdata" , cache)]
+    
+    
+    if (length(modvars_files) == 0){
+      warning(paste("folder contains no `modvars.Rdata` file.", toString(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "cache" ))))
+    } else { 
+      if (length(modvars_files)>1){
+        
+        modvars_files <- modvars_files[which.min(nchar(modvars_files))]
+        modvars_name <- tail(unlist(strsplit(modvars_files[1], split='/')),1)
+        
+        warning(paste("More than 1 file listed with 'modvars.Rdata'. Used file with shortest name:", modvars_name, "    Check folder:",  toString(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "cache" ))))
+      } 
+    }
+    
+    load(file = modvars_files)
+    
+      
+      #Name of site
+      site_nu<-folder
+      
   #Subset to only one site and drop all columns with NAs
   dat <- filter(data_df, site == site_nu) %>%
     select_if(not_all_na)
   
+  if(nrow(dat)==0) {
+    warning(paste0("Skipping folder ", toString(site_nu), ". Folder name does not match compiled data.frame site name. Check folder and site names"))
+    next
+    rm(responses, predictors)
+  }
   
   #Step 0
   source('scripts/percent_change_analysis/0_before_after_perchange_prep.R', echo = F)
@@ -94,7 +148,9 @@ site_nu <- "WI-SW4"
   per.change.list.allsites[[which(site_nu==all_sites)]] <- per.change.tableout
   names(per.change.list.allsites)[[which(site_nu==all_sites)]] <-site_nu
   #end
-# }
+  }
+    
+}
 
 per.change.df.allsites <-ldply(per.change.list.allsites, data.frame, .id='site')
   

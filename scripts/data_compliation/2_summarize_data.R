@@ -67,7 +67,7 @@ data_df3 <- bind_cols(data_df2, conc_df)
 
 #save rds file to the P drive
 #This file was created using the "1_load_all_data.R" script
-saveRDS(data_df3 , file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_conc_allsites_model.rds" ))))
+saveRDS(data_df3 , file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_conc_allsites_model.rds"))))
 
 write.csv(data_df3, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_conc_allsites_model.csv" ))), row.names=F)
 

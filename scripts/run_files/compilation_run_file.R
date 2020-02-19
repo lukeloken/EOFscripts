@@ -9,13 +9,12 @@ source('scripts/functions/not_all_na.R')
 
 #compile site approved data
 #These data contain estimated loads
-source('scripts/data_compliation/1_load_all_siteapproved.R')
+source('scripts/data_compliation/1_load_all_siteapproved_data.R')
 
 
 #load all surface water data
 #output is a data.frame named "data_df"
 source('scripts/data_compliation/1_load_all_data.R')
-
 
 
 #summarize water quality data

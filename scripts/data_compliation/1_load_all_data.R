@@ -63,6 +63,7 @@ for (folder_nu in 1:length(folders)){
       
       #place data into list
       allsites_list[[folder_nu]]<-data_i
+      names(allsites_list)[[folder_nu]] <- file_site_name
 
     }
 }

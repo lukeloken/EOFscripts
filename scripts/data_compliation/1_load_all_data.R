@@ -8,14 +8,18 @@ print(path_to_data)
 allsites_list <-list()
 
 #Identify how many states have data
-states <- list.files(file.path(path_to_data, "field_analysis", "results"))
-states <- unique(substr(states, 1,2))
+folders <- list.files(file.path(path_to_data, "field_analysis", "results"))
+folders <- folders[which(grepl("pair", folders)==FALSE)]
+# states <- unique(substr(states, 1,2))
 # states <- list.files(file.path(path_to_data, "analysis"))[1:2]
 
-state_nu <- 1
-for (state_nu in 1:length(states)){
-  state <- states[state_nu]
+folder_nu <- 1
+for (folder_nu in 1:length(folders)){
+  folder <- folders[folder_nu]
   
+  state <- substr(folder, 1,2)
+  
+  file_site_name <- folder
 
   if (state %in% c('WI')){
     state_tz <- 'America/Chicago'
@@ -23,33 +27,15 @@ for (state_nu in 1:length(states)){
     state_tz <- 'America/New_York'
   }
   
-  folders<-list.files(file.path(path_to_data, "field_analysis", "results", state))
-  
-  #Create empty list for all sites within this state
-  statesites_list <- vector(mode="list", length=length(folders))
-  names(statesites_list) <- folders
-  
-  #Remove paired and tile folders
-  # folders <- folders[which(grepl('pair', folders)==FALSE)]
-  # folders <- folders[which(grepl('TL', folders)==FALSE)]
-  
-  
-  folder_nu<-1
-  for (folder_nu in 1:length(folders)){
-    #Folder name
-    folder<-folders[folder_nu]
-    
+
     #Identify model files
-    rundate_folders<-list.files(file.path(path_to_data, "field_analysis", "results", state, folder, "results"))
+    rundate_folders<-list.files(file.path(path_to_data, "field_analysis", "results", folder))
     rundates <- as.Date(paste0(rundate_folders, "-01"), format="%Y-%m-%d")
     recent_folder <- rundate_folders[which.max(rundates)]
     
-    tables <- list.files(file.path(path_to_data, "field_analysis", "results", state, folder, "results", recent_folder, "tables" ), full.names=T)
+    tables <- list.files(file.path(path_to_data, "field_analysis", "results", folder, recent_folder, "tables" ), full.names=T)
     
     mod_files <- tables[grepl("mod_dat.csv" , tables)]
-    
-
-    
     
     if (length(mod_files) == 0){
       warning(paste("folder contains no `mod_dat.csv` files.", toString(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "tables" ))))
@@ -59,25 +45,11 @@ for (state_nu in 1:length(states)){
         mod_files <- mod_files[which.min(nchar(mod_files))]
         mod_name <- tail(unlist(strsplit(mod_files[1], split='/')),1)
         
-        warning(paste("More than 1 file listed with 'mod_dat.csv'. Used file with shortest name:", mod_name, "    Check folder:",  toString(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "tables" ))))
+        warning(paste("More than 1 file listed with 'mod_dat.csv'. Used file with shortest name:", mod_name, "    Check folder:",  toString(file.path(path_to_data, "field analysis", "results", folder, recent_folder, "tables" ))))
         
       } 
       
-      #Load site name, timezone, and other metadata for the site
-      # source(file.path(path_to_data, folder, 'scripts/0_master_file.R'), echo = F)
-      # print(site_tz)
-      # print(site)
-      
-      file_site_list <- strsplit(mod_files, "_")
-      name_length <- unlist(lapply(file_site_list, length))
-      file_site_name <- tail(unlist(strsplit(unlist(file_site_list[which.min(name_length)])[1], "/")),1)
-      
-      # if (identical(site, file_site_name)==FALSE){
-      #   warning(paste("Site name in `0_master_file.R` does not match site name in data_cached folder:", toString(folder)))
-      #   }
-      
-      #load and combine all model (mod) files
-      
+
       data_i <- lapply(mod_files, read.csv, stringsAsFactors = F, header=T) %>%
         bind_rows(.id = "file_id") %>%
         arrange(unique_storm_number) %>%
@@ -89,19 +61,15 @@ for (state_nu in 1:length(states)){
                rain_enddate = as.POSIXct(rain_enddate, tz=state_tz),
                ant_discharge_date = as.POSIXct(ant_discharge_date, tz=state_tz))
       
-      #place data into state list
-      statesites_list[[folder_nu]]<-data_i
-      # names(statesites_list)[[folder_nu]] <- file_site_name
-      
+      #place data into list
+      allsites_list[[folder_nu]]<-data_i
+
     }
-  }
-  
-  allsites_list[[state_nu]] <- ldply(statesites_list, data.frame, .id = "site")
-  
 }
 
-#Combine all sites into a single data.frame
-data_df <- ldply(allsites_list, data.frame, .id = "state") 
+    
+      data_df <- ldply(allsites_list, data.frame, .id = "site")
+  
 
 loadvars <- c('suspended_sediment_load_pounds', 
               'chloride_load_pounds',
@@ -149,6 +117,6 @@ data_df <- data_df %>%
 rm(allsites_list, data_i, file_site_list, statesites_list)
 rm(file_site_name, folder, folder_nu, folders, mod_files, name_length, recent_folder, rundate_folders, rundates, state, state_nu, state_tz, states, tables, badvars, NAs, loadvars)
 
-saveRDS(data_df, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites.rds" ))))
+saveRDS(data_df, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_model_data.rds" ))))
 
-write.csv(data_df, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites.csv" ))), row.names=F)
+write.csv(data_df, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_model_data.csv" ))), row.names=F)

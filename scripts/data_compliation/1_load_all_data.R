@@ -8,7 +8,8 @@ print(path_to_data)
 allsites_list <-list()
 
 #Identify how many states have data
-states <- list.files(file.path(path_to_data, "analysis"))
+states <- list.files(file.path(path_to_data, "field_analysis", "results"))
+states <- unique(substr(states, 1,2))
 # states <- list.files(file.path(path_to_data, "analysis"))[1:2]
 
 state_nu <- 1
@@ -22,7 +23,7 @@ for (state_nu in 1:length(states)){
     state_tz <- 'America/New_York'
   }
   
-  folders<-list.files(file.path(path_to_data, "analysis", state))
+  folders<-list.files(file.path(path_to_data, "field_analysis", "results", state))
   
   #Create empty list for all sites within this state
   statesites_list <- vector(mode="list", length=length(folders))
@@ -39,11 +40,11 @@ for (state_nu in 1:length(states)){
     folder<-folders[folder_nu]
     
     #Identify model files
-    rundate_folders<-list.files(file.path(path_to_data, "analysis", state, folder, "results"))
+    rundate_folders<-list.files(file.path(path_to_data, "field_analysis", "results", state, folder, "results"))
     rundates <- as.Date(paste0(rundate_folders, "-01"), format="%Y-%m-%d")
     recent_folder <- rundate_folders[which.max(rundates)]
     
-    tables <- list.files(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "tables" ), full.names=T)
+    tables <- list.files(file.path(path_to_data, "field_analysis", "results", state, folder, "results", recent_folder, "tables" ), full.names=T)
     
     mod_files <- tables[grepl("mod_dat.csv" , tables)]
     

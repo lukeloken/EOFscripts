@@ -5,10 +5,18 @@
 #load functions
 source('scripts/functions/fxns_data_compilation.R')
 source('scripts/functions/g_legend.R')
+source('scripts/functions/not_all_na.R')
+
+#compile site approved data
+#These data contain estimated loads
+source('scripts/data_compliation/1_load_all_siteapproved.R')
+
 
 #load all surface water data
 #output is a data.frame named "data_df"
 source('scripts/data_compliation/1_load_all_data.R')
+
+
 
 #summarize water quality data
 #Currently makes lots of figures

@@ -16,6 +16,20 @@ soil_dates$Type <- rep('Spring', nrow(soil_dates))
 #Add dates to spring
 soil_df <- full_join(soil_dates, soil_df) 
 
+#subset fall data
+soil_fall <- filter(soil_df, Type=='Fall') %>%
+  select(-Type, -Depth, -Project_Year, -SampleID, -Lat, -Long)
+
+soil_fall <- soil_fall[,colSums(is.na(soil_fall))<nrow(soil_fall)]
+
+soil_fall_summary <- soil_fall %>%
+  dplyr::group_by(Site, Manure) %>%
+  summarize_at(vars(Bulk_Den:Penotrometer_6_18), mean, na.rm=T) %>%
+  select_if(~sum(!is.na(.)) > 0) %>%
+  mutate(Depth = "0-15") %>%
+  rename(OM_fall = OM,
+         Bulk_Den_fall = Bulk_Den)
+
 
 #Calculate percent silt and sand for 0-15 combined depth
 soil_spring <- filter(soil_df, Type=='Spring') %>%
@@ -45,9 +59,9 @@ soil_df3 <- soil_df2 %>%
   
 
 
+intersect(names(soil_df3), names(soil_fall_summary))
 
-
-
+soil_joined <- full_join(soil_df3, soil_fall_summary)
 
 
 soilvars <- names(soil_df3)[5:ncol(soil_df3)]
@@ -134,16 +148,40 @@ dev.off()
 #PCA
 # ##################################
 
-pca_df<-soil_df3[,c("Depth", "Manure", soilvars)]
+pca_df<-soil_df3[,c("Site", "Depth", "Manure", soilvars)]
 Manure_temp <- factor(pca_df$Manure, c('Manure', "No Manure"))
 Manure_temp <- as.numeric(Manure_temp)
 Manure_temp[which(Manure_temp == 2)] <- 0
 pca_df$Manure_binary <- Manure_temp
+
+# Subset to 0 to 15 cm depth and include infiltration data
+# create pca object 
+pca_df_0_15 <- soil_joined %>%
+  filter(Depth == "0-15")
+
+Manure_temp2 <- factor(pca_df_0_15$Manure, c('Manure', "No Manure"))
+Manure_temp2 <- as.numeric(Manure_temp2)
+Manure_temp2[which(Manure_temp2 == 2)] <- 0
+pca_df_0_15$Manure_binary <- Manure_temp2
+
+
+pca_df_0_15 <- pca_df_0_15[colSums(!is.na(pca_df_0_15)) > 0] %>%
+  group_by() %>%
+  na.omit()
+
+#For big analysis remove rows with any NAs
 pca_df<-na.omit(pca_df)
+pca_df2 <- select(pca_df, -Site, -Manure, -Depth)
 
-pca_df2 <- select(pca_df, -Manure, -Depth)
-
+#Make PCAs
 pca <- prcomp(pca_df2, center = TRUE, scale. = TRUE, rank=6) 
+
+pca_0_15 <- pca_df_0_15 %>%
+  dplyr::select(-Manure, -Depth, -Site, -Date) %>%
+  prcomp(center = TRUE, scale. = TRUE, rank=6) 
+
+rownames(pca_df_0_15) <- pca_df_0_15$Site
+
 
 
 plot(pca, type='l')
@@ -210,7 +248,6 @@ dev.off()
 
 
 
-
 # pca <- prcomp(pca_df, center = TRUE, scale. = TRUE, rank=5) 
 
 
@@ -270,4 +307,116 @@ grid.newpage()
 grid.draw(rbind(ggplotGrob(p_1v2), ggplotGrob(p_3v2), size = "last"))
 
 dev.off()
+
+
+
+
+
+#Depth = 0 to 15 cm
+
+png(file_out(file.path(path_to_results, "Figures", "Soil", "SoilPCA_0_15cm.png")), res=400, width=7, height=7, units='in')
+
+par(mfrow=c(1,2))
+par(mar=c(2.5,3.5,.5,0), oma=c(.5,0,1.5,0))
+par(mgp=c(2, .5, 0))
+
+plot(pca_0_15, type='l', main='')
+abline(h=1, lty=3)
+box(which='plot')
+mtext('PCA #',1,2)
+
+#corr plot
+corrange <- c(NA, NA)
+corrange[1] <- floor(min(pca_0_15$rotation)*10)/10
+corrange[2] <- ceiling(max(pca_0_15$rotation)*10)/10
+if (mean(corrange) != 0) {
+  corrange[which.min(abs(corrange))] <- corrange[which.max(abs(corrange))]*(-1)
+}
+corrplot(pca_0_15$rotation, is.corr=FALSE, mar=c(0,0,0,1.5), oma=c(0,0,0,0), tl.col='black', cl.pos='r', cl.ratio=0.5, col=brewer.pal(10, 'RdYlBu'), cl.lim=corrange)
+
+mtext('Correlation', 4, -2)
+mtext('Predictor variable', 2, 1.5)
+mtext('0 to 15 cm depth', 3, 0, outer=T)
+
+# legend(-7,par('usr')[4], c('Predictor variable'), bty='n')
+
+dev.off()
+
+
+
+
+
+
+#plot axes 1 and 2 of PCA
+png(file_out(file.path(path_to_results, "Figures", "Soil", "PredictorVarsPCA_v1_0_15.png")), res=400, width=5, height=5, units='in')
+par(mfrow=c(1,1))
+par(mar=c(1.5,3,.5,.5), oma=c(2.5,1,0,0))
+par(mgp=c(2, .5, 0))
+
+
+p_1v2<-autoplot(pca_0_15, x=2, y=1, data=pca_df_0_15, size=3, colour = "Manure",
+                label=TRUE, label.size=4, shape=FALSE,
+                loadings = TRUE, loadings.colour = 'grey', 
+                loadings.label = TRUE, loadings.label.colour='black', 
+                loadings.label.size = 3) + 
+  scale_color_manual(values=c('#d95f02', '#1b9e77')) + 
+  scale_shape_manual(values=c(1,16)) + 
+  theme_bw() + 
+  theme(legend.position='none', 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
+
+print(p_1v2)  
+
+dev.off()
+
+
+
+#plot axes 1 and 3 of PCA
+png(file_out(file.path(path_to_results, "Figures", "Soil", "PredictorVarsPCA_v2_0_15.png")), res=400, width=5, height=5, units='in')
+par(mfrow=c(1,1))
+par(mar=c(1.5,3,.5,.5), oma=c(2.5,1,0,0))
+par(mgp=c(2, .5, 0))
+
+
+# p_3v2<-autoplot(pca_0_15, x=3, y=1, data=pca_df_0_15, size=3, colour = "Manure",
+#                 loadings = TRUE, loadings.colour = 'grey', 
+#                 loadings.label = TRUE, loadings.label.colour='black', 
+#                 loadings.label.size = 3) + 
+#   scale_color_manual(values=c('#d95f02', '#1b9e77')) + 
+#   scale_shape_manual(values=c(1,16)) + 
+#   theme_bw() + 
+#   theme(legend.position='bottom', panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+p_3v2<-autoplot(pca_0_15, x=3, y=1, data=pca_df_0_15, size=3, colour = "Manure", 
+                label=TRUE, label.size=4, shape=FALSE,
+                loadings = TRUE, loadings.colour = 'grey', 
+                loadings.label = TRUE, loadings.label.colour='black', 
+                loadings.label.size = 3, labels=TRUE) + 
+  scale_color_manual(values=c('#d95f02', '#1b9e77')) + 
+  scale_shape_manual(values=c(1,16)) + 
+  theme_bw() + 
+  theme(legend.position='bottom', panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+
+print(p_3v2)  
+
+dev.off()
+
+
+#plot first three axes of PCA
+png(file_out(file.path(path_to_results, "Figures", "Soil", "PredictorVarsPCA_v3_0_15.png")), res=400, width=5, height=10, units='in')
+par(mfrow=c(1,1))
+par(mar=c(1.5,3,.5,.5), oma=c(2.5,1,0,0))
+par(mgp=c(2, .5, 0))
+
+grid.arrange(p_1v2, p_3v2, ncol=2)
+
+grid.newpage()
+grid.draw(rbind(ggplotGrob(p_1v2), ggplotGrob(p_3v2), size = "last"))
+
+dev.off()
+
+
+
 

@@ -15,6 +15,11 @@
 dat.mod.before <- filter(dat.mod, period == 'before')
 dat.mod.after <- filter(dat.mod, period == 'after')
 
+if (nrow(dat.mod.after)==0 | nrow(dat.mod.before)==0) {
+  next
+  warning(paste0("No Pre/Post analysis for ", toString(site_nu), ". Either pre/post data are missing."))
+}
+
 # save MDC as output from loop
 
 mdc.perc.nbefore <- c()
@@ -118,7 +123,7 @@ for (i in 1:length(responses)) {
 }
 
 # create a dataframe describing the residual models
-before_after_resid <- data.frame(variable = clean_names,
+before_after_resid <- data.frame(variable = responses,
                                  perc_var = perc.var,
                                  pvals = round(pval.differences, 2),
                                  pvals_reduction = round(pval.less, 2),
@@ -338,7 +343,7 @@ for (i in 1:(length(responses)-1)) {
   
   model.fig.fit <- grid.arrange(grobs=list(mlm.fig.before, mlm.fig.after,  glm.fig.before, glm.fig.after), nrow=2, top=responses[i])
   
-  ggsave(paste0('figures/',  responses[i], "_mlmprediction.png"), model.fig.fit, height=6, width=6, units='in')
+  ggsave(file.path(path_to_results, 'Figures', 'PercentChange', site_nu, paste0(responses[i], "_mlmprediction.png")), model.fig.fit, height=6, width=6, units='in')
   
   
   
@@ -382,7 +387,7 @@ for (i in 1:(length(responses)-1)) {
 
 # create data frame of values
 perc_reduction <- data.frame(response = responses[-length(responses)],
-                             response_clean = clean_names[-length(responses)],
+                             # response_clean = clean_names[-length(responses)],
                              before_r2 = before.fit,
                              after_r2 = after.fit,
                              perc_diff = round(mean.diff*100, 1),
@@ -399,6 +404,10 @@ perc_reduction <- data.frame(response = responses[-length(responses)],
                              perc_diff_nonfrozen = round(mean.diff.nonfrozen*100, 1),
                              sd_perc_diff_nonfrozen = round(mean.diff.sd.nonfrozen*100, 1))
 
+if(length(per.change.list) ==0){
+  warning("No response variables had detected changes")
+  next
+}
 
 per.change.tableout <-ldply(per.change.list, data.frame, .id = "variable")
 
@@ -419,5 +428,5 @@ per.change.allvars <- ggplot(per.change.tableout[per.change.tableout$model =='gl
         panel.grid.minor = element_blank()) +
   ggtitle(site_nu) 
 
-ggsave(file=paste0("figures/", site_nu, "_percent_change_allvars.png"), per.change.allvars, width=5, height=4, units='in')
+ggsave(file=file.path(path_to_results, "Figures", "PercentChange", site_nu, "Percent_change_allvars.png"), per.change.allvars, width=5, height=4, units='in')
 

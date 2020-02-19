@@ -4,7 +4,7 @@
 #Group by water year
 #This script uses
 
-data_df3 <- readRDS(file=(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_conc_allsites.rds" ))))
+data_df3 <- readRDS(file=(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_conc_allsites_model.rds" ))))
 
 
 
@@ -48,6 +48,8 @@ rainvars <-c("rain", "duration", "Ievent", "I5", "I10", "I15", "I30", "I60",
              "energy_m1", "erosivity_m1", "energy_m2", "erosivity_m2")
 
 
+#Identify sites
+EOF_sites <- unique(data_df3$site)
 
 #########################################
 # playing with plotting
@@ -281,3 +283,38 @@ print(RunoffByYear_box)
 
 ggsave(file_out(file.path(path_to_results, "Figures", "Rain_Boxplots", paste0("sum_runoff", "ByYear_boxplot.png"))), RunoffByYear_box, height=8, width=12, units = 'in', dpi=320)
 
+
+
+
+# plot all site data in single panel
+
+
+ConcByYear_boxlist_bysite<-list()
+site_i <- 1
+for (site_i in 1:length(EOF_sites)){
+  
+  data_i <- filter(data_df3, site==EOF_sites[site_i]) %>%
+    select(c("wateryear", loadvars, concvars, rainvars)) %>%
+    gather(key=variable, value=value, 2:(1+length(c(loadvars, concvars, rainvars)))) %>%
+    mutate(variable = factor(variable, c(loadvars, concvars, rainvars)))
+  
+  ConcByYear_boxlist_bysite[[site_i]] <- ggplot(data=data_i, aes_string(x="wateryear", y="value", group="wateryear", color="wateryear", fill="wateryear")) +
+    scale_y_log10() +
+    geom_jitter(width = .1, size=1, alpha=.5, shape=16) + 
+    geom_boxplot(alpha=0.2, outlier.shape = NA) +
+    # scale_shape_manual(values=c(16, 1))+
+    # stat_smooth(method = "lm", se=T, alpha=.1) +
+    facet_wrap(~variable, scales='free_y') +
+    theme_bw() +
+    theme(legend.position = 'bottom') +
+    guides(color = guide_legend(nrow = 1)) +
+    labs(x = "Water year") +
+    theme(axis.text=element_text(size=8)) +
+    ggtitle(paste0(EOF_sites[site_i],  ': All runoff events')) +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  print(ConcByYear_boxlist_bysite[[site_i]])
+  
+  ggsave(file_out(file.path(path_to_results, "Figures", "Boxplots_bySite", paste0(EOF_sites[site_i], "_ByYear_boxplot.png"))), ConcByYear_boxlist_bysite[[site_i]], height=8, width=12, units = 'in', dpi=320)
+  
+}

@@ -5,6 +5,7 @@
 # Not sure which of these are actually needed. 
 
 # load libraries
+library(plyr)
 library(dplyr)
 library(Rainmaker)
 library(dataRetrieval)
@@ -17,6 +18,7 @@ library(pdp)
 library(jtools)
 library(caret)
 library(bestglm)
+library(drake)
 
 
 #load repo functions
@@ -35,17 +37,23 @@ path_to_results <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth"
 # This code differs in that it processes all the sites serially. 
 
 #Currently the 'clean names' for WI-3 
-# clean_names <- c('SS load (pounds)', 'Chloride load (pounds)',
-#                  'NO2 + NO3 load (pounds)', 'Ammonium load (pounds)', 
-#                  'TKN load (pounds)', 'Orthophosphate load (pounds)', 
-#                  'TP load (pounds)', 'TN load (pounds)', 
-#                  'Org N load (pounds)', 'Peak discharge (cfs)', 'Volume (cf)')
+clean_names <- c('SS load (pounds)', 'Chloride load (pounds)',
+                 'NO2 + NO3 load (pounds)', 'Ammonium load (pounds)',
+                 'TKN load (pounds)', 'Orthophosphate load (pounds)',
+                 'TP load (pounds)', 'TN load (pounds)',
+                 'Org N load (pounds)', 'Peak discharge (cfs)', 'Volume (cf)')
 
+#These are the response names in the merged data file. 
+responses_clean <- c("suspended_sediment_load_pounds", "chloride_load_pounds",
+                     "no2_no3n_load_pounds", "ammonium_n_load_pounds",
+                     "tkn_unfiltered_load_pounds", "orthophosphate_load_pounds",
+                     "tp_unfiltered_load_pounds", "total_nitrogen_load_pounds", 
+                     "organic_nitrogen_load_pounds", "peak_discharge", "runoff_volume") 
 
 #Load compiled data from P drive. 
 #This data is the output from the compilation script
 #Rather could use the 'mod' file in each site sub-folder
-data_df <- readRDS(file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites.rds" ))))
+data_df <- readRDS(file=(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites.rds" ))))
 
 all_sites <- unique(data_df$site)
 
@@ -65,7 +73,7 @@ per.change.list.allsites<-list()
 
 #Identify how many states have data
 states <- list.files(file.path(path_to_data, "analysis"))
-# states <- list.files(file.path(path_to_data, "analysis"))[1:2]
+states <- c("IN", "MI", "WI")
 
 state_nu <- 1
 for (state_nu in 1:length(states)){
@@ -87,6 +95,20 @@ for (state_nu in 1:length(states)){
     #Folder name
     #Also site name
     folder<-folders[folder_nu]
+    
+    #Name of site
+    site_nu<-folder
+    
+    print(site_nu)
+    
+    #Subset to only one site and drop all columns with NAs
+    dat <- filter(data_df, site == site_nu) %>%
+      select_if(not_all_na)
+    
+    if (nrow(dat)==0){
+      warning(paste(site_nu, " is not included in compiled data. Skipping"))
+      next
+    }
     
     #Identify model files
     rundate_folders<-list.files(file.path(path_to_data, "analysis", state, folder, "results"))
@@ -112,45 +134,49 @@ for (state_nu in 1:length(states)){
     
     load(file = modvars_files)
     
-      
-      #Name of site
-      site_nu<-folder
-      
-  #Subset to only one site and drop all columns with NAs
-  dat <- filter(data_df, site == site_nu) %>%
-    select_if(not_all_na)
-  
-  if(nrow(dat)==0) {
-    warning(paste0("Skipping folder ", toString(site_nu), ". Folder name does not match compiled data.frame site name. Check folder and site names"))
-    next
-    rm(responses, predictors)
-  }
-  
-  #Step 0
-  source('scripts/percent_change_analysis/0_before_after_perchange_prep.R', echo = F)
-  
-  #Step 1
-  #Random forest analysis of entire dataset
-  source('scripts/percent_change_analysis/1_before_after_perchange_mdc.R', echo = F)
-  
-  # Step 2
-  #Use random forest to determine set of predictors to use in multi linear model
-  #Use 'before' data to build model
-  #Predict 'after' data and compare to observations
-  #Use model coefficient standard error to include confidence intervals in prediction
-  #output a summary table, model list, and set of figures
-  source('scripts/percent_change_analysis/2_before_after_perchange_mlm.R', echo = F)
-  
-  per.change.tableout
-  temp_filename <- file.path('data_cached', paste0(site_nu, '_percent_reduction_before_after_mlm.csv'))
-  # write.csv(per.change.tableout, temp_filename, row.names = F)
-  
-  per.change.list.allsites[[which(site_nu==all_sites)]] <- per.change.tableout
-  names(per.change.list.allsites)[[which(site_nu==all_sites)]] <-site_nu
-  #end
-  }
     
+    if(nrow(dat)==0) {
+      warning(paste0("Skipping folder ", toString(site_nu), ". Folder name does not match compiled data.frame site name. Check folder and site names"))
+      next
+      rm(responses, predictors)
+    }
+    
+    responses <- responses_clean
+    
+    if(site_nu =='NY-SW4'){
+      warning("skipping site NY-SW4. predictor vars not correct")
+      next
+    }
+    
+    #create direcotry for figures
+    dir.create(file.path(path_to_results, 'Figures', 'PercentChange', site_nu), showWarnings = F)
+    
+    #Step 0
+    source('scripts/percent_change_analysis/0_before_after_perchange_prep.R', echo = F)
+    
+    
+    
+    #Step 1
+    #Random forest analysis of entire dataset
+    source('scripts/percent_change_analysis/1_before_after_perchange_mdc.R', echo = F)
+    
+    # Step 2
+    #Use random forest to determine set of predictors to use in multi linear model
+    #Use 'before' data to build model
+    #Predict 'after' data and compare to observations
+    #Use model coefficient standard error to include confidence intervals in prediction
+    #output a summary table, model list, and set of figures
+    source('scripts/percent_change_analysis/2_before_after_perchange_mlm.R', echo = F)
+    
+    per.change.tableout
+    temp_filename <- file.path('data_cached', paste0(site_nu, '_percent_reduction_before_after_mlm.csv'))
+    # write.csv(per.change.tableout, temp_filename, row.names = F)
+    
+    per.change.list.allsites[[which(site_nu==all_sites)]] <- per.change.tableout
+    names(per.change.list.allsites)[[which(site_nu==all_sites)]] <-site_nu
+    #end
+  }
+  
 }
 
 per.change.df.allsites <-ldply(per.change.list.allsites, data.frame, .id='site')
-  

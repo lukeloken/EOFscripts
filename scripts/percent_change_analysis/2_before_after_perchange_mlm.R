@@ -601,9 +601,9 @@ per.change.table.plot <- per.change.tableout %>%
   group_by(variable, value=model) %>%
   tidyr::gather(metric, value, 3:5)
 
-per.change.allvars <- ggplot(per.change.tableout[per.change.tableout$model =='glm',], aes(x=variable)) + 
+per.change.allvars <- ggplot(per.change.tableout[per.change.tableout$model =='quan',], aes(x=variable)) + 
   geom_hline(yintercept = 0, col='black', linetype='dashed') +
-  geom_errorbar(aes(ymin=lwr, ymax=upr), position=position_dodge(width=.5)) +
+  geom_errorbar(aes(ymin=lwr, ymax=upr), position=position_dodge(width=.5), width=.3) +
   geom_point(aes(y=fit), position=position_dodge(width=.5), size=3, shape=18) +
   theme_bw() +
   labs(y='percent change') +
@@ -612,7 +612,7 @@ per.change.allvars <- ggplot(per.change.tableout[per.change.tableout$model =='gl
   theme(legend.position='bottom',
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank()) +
-  ggtitle(site_nu) 
+  ggtitle(site_name) 
 
-ggsave(file=file.path(path_to_results, "Figures", "PercentChange", site_nu, "Percent_change_allvars.png"), per.change.allvars, width=5, height=4, units='in')
+ggsave(file=file.path(path_to_results, "Figures", "PercentChange", site_name, "Percent_change_allvars.png"), per.change.allvars, width=5, height=4, units='in')
 

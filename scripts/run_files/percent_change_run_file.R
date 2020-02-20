@@ -19,7 +19,7 @@ library(jtools)
 library(caret)
 library(bestglm)
 library(drake)
-
+library(quantregForest)
 
 #load repo functions
 source('scripts/functions/not_all_na.R')
@@ -53,7 +53,7 @@ responses_clean <- c("suspended_sediment_load_pounds", "chloride_load_pounds",
 #Load compiled data from P drive. 
 #This data is the output from the compilation script
 #Rather could use the 'mod' file in each site sub-folder
-data_df <- readRDS(file=(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites.rds" ))))
+data_df <- readRDS(file=(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_conc_allsites_model.rds" ))))
 
 all_sites <- unique(data_df$site)
 
@@ -72,37 +72,20 @@ per.change.list.allsites<-list()
 
 
 #Identify how many states have data
-states <- list.files(file.path(path_to_data, "analysis"))
-states <- c("IN", "MI", "WI")
+# states <- list.files(file.path(path_to_data, "analysis"))
+states <- c("IN", "MI", "WI", "OH", "NY")
 
-state_nu <- 1
-for (state_nu in 1:length(states)){
-  state <- states[state_nu]
+
+
+site_nu <- 17
+for (site_nu in 1:length(all_sites)){
+  site_name <- all_sites[site_nu]
+  print(site_name)
   
-  folders<-list.files(file.path(path_to_data, "analysis", state))
+  folders<-list.files(file.path(path_to_data, "field_analysis", "results", site_name))
   
-  #Create empty list for all sites within this state
-  statesites_list <- vector(mode="list", length=length(folders))
-  names(statesites_list) <- folders
-  
-  #Remove paired and tile folders
-  # folders <- folders[which(grepl('pair', folders)==FALSE)]
-  # folders <- folders[which(grepl('TL', folders)==FALSE)]
-  
-  
-  folder_nu<-1
-  for (folder_nu in 1:length(folders)){
-    #Folder name
-    #Also site name
-    folder<-folders[folder_nu]
-    
-    #Name of site
-    site_nu<-folder
-    
-    print(site_nu)
-    
-    #Subset to only one site and drop all columns with NAs
-    dat <- filter(data_df, site == site_nu) %>%
+      #Subset to only one site and drop all columns with NAs
+    dat <- filter(data_df, site == site_name) %>%
       select_if(not_all_na)
     
     if (nrow(dat)==0){
@@ -110,12 +93,11 @@ for (state_nu in 1:length(states)){
       next
     }
     
-    #Identify model files
-    rundate_folders<-list.files(file.path(path_to_data, "analysis", state, folder, "results"))
-    rundates <- as.Date(paste0(rundate_folders, "-01"), format="%Y-%m-%d")
-    recent_folder <- rundate_folders[which.max(rundates)]
+    #Identify rundates files
+    rundates <- as.Date(paste0(folders, "-01"), format="%Y-%m-%d")
+    recent_folder <- folders[which.max(rundates)]
     
-    cache <- list.files(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "cache" ), full.names=T)
+    cache <- list.files(file.path(path_to_data, "field_analysis", "results", site_name, recent_folder, "cache" ), full.names=T)
     
     modvars_files <- cache[grepl("modvars.Rdata" , cache)]
     
@@ -143,13 +125,13 @@ for (state_nu in 1:length(states)){
     
     responses <- responses_clean
     
-    if(site_nu =='NY-SW4'){
+    if(site_name =='NY-SW4'){
       warning("skipping site NY-SW4. predictor vars not correct")
       next
     }
     
     #create direcotry for figures
-    dir.create(file.path(path_to_results, 'Figures', 'PercentChange', site_nu), showWarnings = F)
+    dir.create(file.path(path_to_results, 'Figures', 'PercentChange', site_name), showWarnings = F)
     
     #Step 0
     source('scripts/percent_change_analysis/0_before_after_perchange_prep.R', echo = F)

@@ -595,11 +595,21 @@ if(length(per.change.list) ==0){
   next
 }
 
-per.change.tableout <-ldply(per.change.list, data.frame, .id = "variable")
+per.change.tableout <-ldply(per.change.list, data.frame, .id = "variable") 
+
+otherresponses = data.frame(variable = responses[-which(responses %in% per.change.tableout$variable)]) %>%
+  mutate(model = 'quan')
+
+per.change.tableout <- per.change.tableout %>%
+  full_join(otherresponses) %>%
+  mutate(variable = factor(variable, responses)) 
+
+
 
 per.change.table.plot <- per.change.tableout %>%
   group_by(variable, value=model) %>%
-  tidyr::gather(metric, value, 3:5)
+  tidyr::gather(metric, value, 3:5) 
+
 
 per.change.allvars <- ggplot(per.change.tableout[per.change.tableout$model =='quan',], aes(x=variable)) + 
   geom_hline(yintercept = 0, col='black', linetype='dashed') +

@@ -32,6 +32,7 @@ perc.var <- c()
 ####################################
 # residual tests - was there a change after BMP implementation?
 # loop through responses to create equation and model
+i=1
 for (i in 1:length(responses)) {
   
   mod.equation <- as.formula(paste(responses[i], paste(predictors.keep, collapse = " + "), sep = " ~ "))
@@ -157,8 +158,11 @@ load.after <- c()
 
 glmlist<-list()
 mlmlist<-list()
+modlist <- list()
+quanlist <- list()
 per.change.list <-list()
 
+i=2
 for (i in 1:(length(responses)-1)) {
   
   if (pval.differences[i] > 0.1) {
@@ -179,16 +183,96 @@ for (i in 1:(length(responses)-1)) {
     load.after[i] <- NA
     next}
   
+  
+  # ###########################
+  # Random forest
+  # ###########################
+  
   mod.equation <- as.formula(paste(responses[i], paste(predictors.keep, collapse = " + "), sep = " ~ "))
   
   mod.before <- randomForest(mod.equation, data = dat.mod.before, importance = T, na.action = na.omit, ntree = 1000)
   mod.after <- randomForest(mod.equation, data = dat.mod.after, importance = T, na.action = na.omit, ntree = 1000)
   
   
+  pred.mod.before <- predict(mod.before, dat.mod.before, interval = 'confidence')
+  pred.mod.after <- predict(mod.before, dat.mod.after, interval = 'confidence')
+  
+  pred.mod.before <- data.frame(obs = dat.mod.before[,responses[i]]) %>%
+    bind_cols(as.data.frame(pred.mod.before)) %>%
+    rename(fit = pred.mod.before)
+  
+  pred.mod.after <- data.frame(obs = dat.mod.after[,responses[i]]) %>%
+    bind_cols(as.data.frame(pred.mod.after)) %>%
+    rename(fit = pred.mod.after)
+  
+  mod.summary <- colSums(10^pred.mod.after)
+  
+  mod.r2.before <-  round(mod.before$rsq[500], 2)
   
   
+  
+  # ###########################
+  # Quantile regression forest
+  # ###########################
+  
+  #Make input data (x are dataframes, y is a vector)
+  x.quan.before <- dat.mod.before %>%
+    select(predictors.keep)
+  
+  y.quan.before <- dat.mod.before %>%
+    select(responses[i])
+  
+  x.quan.after <- dat.mod.after %>%
+    select(predictors.keep)
+  
+  y.quan.after <- dat.mod.after %>%
+    select(responses[i])
+  
+  #Make quantine regression forest using pre data
+  quan.before <- quantregForest(x=x.quan.before, y=y.quan.before[,1], importance = T, na.action = na.omit, ntree = 1000)
+  # quan.after <- quantregForest(x=x.quan.after, y=y.quan.after[,1], importance = T, na.action = na.omit, ntree = 1000)
+  
+  quan.r2 <- round(quan.before$rsq[500], 2)
+  
+  #Assess fit of model
+  conditionalQuantiles.before <- predict(quan.before, x.quan.before, what=seq(0.05, .95, .05))
+  print(conditionalQuantiles.before[1:4,])
+  
+  conditionalMean.before <- predict(quan.before, x.quan.before, what=mean)
+  print(conditionalMean.before[1:4])
+  
+  conditionalSd.before <- predict(quan.before, x.quan.before, what=sd)
+  print(conditionalSd.before[1:4])
+  
+  
+  #Predict future using pre-model
+  conditionalQuantiles.after <- predict(quan.before, x.quan.after, what=seq(0.05, .95, .05))
+  print(conditionalQuantiles.after[1:4,])
+  
+  conditionalMean.after <- predict(quan.before, x.quan.after, what=mean)
+  print(conditionalMean.after[1:4])
+  
+  conditionalSd.after <- predict(quan.before, x.quan.after, what=sd)
+  print(conditionalSd.after[1:4])
+  
+  
+  #Organize for plotting
+  plot.table.before <- data.frame(conditionalQuantiles.before) %>%
+    bind_cols(obs = y.quan.before[,1]) %>%
+    bind_cols(mean = conditionalMean.before) %>%
+    bind_cols(sd = conditionalSd.before) 
+  
+  plot.table.after <- data.frame(conditionalQuantiles.after) %>%
+    bind_cols(obs = y.quan.after[,1]) %>%
+    bind_cols(mean = conditionalMean.after) %>%
+    bind_cols(sd = conditionalSd.after) 
+  
+  #Convert to actual units
+  quan.summary <- colSums(10^plot.table.after, na.rm=T)
+  
+
   # #######################################
-  # Use top 5 model predictors from before and after to generate a multiple linear model
+  # Use top 5 model random forest predictors from before and after to generate a multiple linear model
   # Code is currently nested within the bigger script, which might need to change
   # #########################################
   
@@ -249,11 +333,16 @@ for (i in 1:(length(responses)-1)) {
   pred.glm.after <- data.frame(obs = dat.mod.after[,responses[i]]) %>%
     bind_cols(as.data.frame(pred.glm.after))
   
-  #Convert to actual units and make percent change table
+  #Convert to actual units 
   mlm.summary <- colSums(10^pred.mlm.after)
   glm.summary <- colSums(10^pred.glm.after)
+ 
+
+  # ##################################################################
+  # make percent change table and merge with random/quntile forest predictions
+  # ##################################################################
   
-  per.change.table <- data.frame(matrix(ncol=4, nrow=2))
+  per.change.table <- data.frame(matrix(ncol=4, nrow=4))
   names(per.change.table) <- names(mlm.summary)
   names(per.change.table)[1] <- c('model')
   
@@ -267,6 +356,14 @@ for (i in 1:(length(responses)-1)) {
   per.change.table$lwr[2] <- round((-1)*(glm.summary['upr'] - glm.summary['obs'])/glm.summary['obs']*100)
   per.change.table$upr[2] <- round((-1)*(glm.summary['lwr'] - glm.summary['obs'])/glm.summary['obs']*100)
   
+  per.change.table$model[3] <- 'RF'
+  per.change.table$fit[3] <- round((mod.summary['obs'] - mod.summary['fit'])/mod.summary['obs']*100)
+  
+  #Save 25% and 75% quantile prediction intervals
+  per.change.table$model[4] <- 'quan'
+  per.change.table$fit[4] <- round((quan.summary['obs'] - quan.summary['quantile..0.5'])/quan.summary['obs']*100)
+  per.change.table$lwr[4] <- round((-1)*(quan.summary['quantile..0.75'] - quan.summary['obs'])/quan.summary['obs']*100)
+  per.change.table$upr[4] <- round((-1)*(quan.summary['quantile..0.25'] - quan.summary['obs'])/quan.summary['obs']*100)
   
   
   #Save models and percent change table
@@ -275,12 +372,13 @@ for (i in 1:(length(responses)-1)) {
   
   glmlist[[i]]<-glm
   mlmlist[[i]]<-mlm
-  
+  modlist[[i]]<-mod
+  quanlist[[i]] <- quan.before
   
   #Plot simple scatterplots with errorbars to visualize model fits
   mlm.fig.before<-ggplot(data=pred.mlm.before, aes(x=obs, y=fit)) + 
     geom_point() +
-    geom_errorbar(aes(x=obs, ymin=lwr, ymax=upr)) +
+    geom_errorbar(aes(x=obs, ymin=lwr, ymax=upr), col='grey40', alpha=.5) +
     geom_abline() +
     theme_bw() +
     # theme(axis.title.x=element_blank()) + 
@@ -294,7 +392,7 @@ for (i in 1:(length(responses)-1)) {
   
   glm.fig.before<-ggplot(data=pred.glm.before, aes(x=obs, y=fit)) + 
     geom_point() +
-    geom_errorbar(aes(x=obs, ymin=lwr, ymax=upr)) +
+    geom_errorbar(aes(x=obs, ymin=lwr, ymax=upr), col='grey40', alpha=.5) +
     geom_abline() +
     theme_bw() +
     labs(y='bestglm fit',
@@ -307,11 +405,11 @@ for (i in 1:(length(responses)-1)) {
   
   mlm.fig.after<-ggplot(data=pred.mlm.after, aes(x=obs, y=fit)) + 
     geom_point() +
-    geom_errorbar(aes(x=obs, ymin=lwr, ymax=upr)) +
+    geom_errorbar(aes(x=obs, ymin=lwr, ymax=upr), col='grey40', alpha=.5) +
     geom_abline() +
     theme_bw() +
     # theme(axis.title.x=element_blank()) + 
-    labs(y='multi-linear model fit',
+    labs(y='multi-linear model prediction',
          x='') +
     annotate("text", 
              y= min(pred.mlm.after$lwr), 
@@ -325,10 +423,10 @@ for (i in 1:(length(responses)-1)) {
   
   glm.fig.after<-ggplot(data=pred.glm.after, aes(x=obs, y=fit)) + 
     geom_point() +
-    geom_errorbar(aes(x=obs, ymin=lwr, ymax=upr)) +
+    geom_errorbar(aes(x=obs, ymin=lwr, ymax=upr), col='grey40', alpha=.5) +
     geom_abline() +
     theme_bw() +
-    labs(y='bestglm fit',
+    labs(y='bestglm prediction',
          x='observed value') +
     annotate("text", 
              y= min(pred.glm.after$lwr), 
@@ -343,7 +441,95 @@ for (i in 1:(length(responses)-1)) {
   
   model.fig.fit <- grid.arrange(grobs=list(mlm.fig.before, mlm.fig.after,  glm.fig.before, glm.fig.after), nrow=2, top=responses[i])
   
-  ggsave(file.path(path_to_results, 'Figures', 'PercentChange', site_nu, paste0(responses[i], "_mlmprediction.png")), model.fig.fit, height=6, width=6, units='in')
+  ggsave(file.path(path_to_results, 'Figures', 'PercentChange', site_name, paste0(responses[i], "_mlmprediction.png")), model.fig.fit, height=6, width=6, units='in')
+  
+  
+  
+  mod.fig.before<-ggplot(data=pred.mod.before, aes(x=obs, y=fit)) + 
+    geom_point() +
+    # geom_errorbar(aes(x=obs, ymin=lwr, ymax=upr)) +
+    geom_abline() +
+    theme_bw() +
+    labs(y='random forest fit',
+         x='observed value') +
+    annotate("text", y= min(pred.mod.before$fit), 
+             x =max(pred.mod.before$obs),
+             label="before", hjust=1) +
+    annotate("text", y= max(pred.mod.before$fit),
+             x =mean(c(min(pred.mod.before$obs), max(pred.mod.before$fit))),label=paste("r2 =", round(mod.r2.before, 2)),hjust=0.5) 
+  
+  
+  
+  mod.fig.after<-ggplot(data=pred.mod.after, aes(x=obs, y=fit)) + 
+    geom_point() +
+    # geom_errorbar(aes(x=obs, ymin=lwr, ymax=upr)) +
+    geom_abline() +
+    theme_bw() +
+    labs(y='random forest prediction',
+         x='observed value') +
+    annotate("text", 
+             y= min(pred.mod.after$fit), 
+             x =max(pred.mod.after$obs),
+             label="after", hjust=1, size=4) +
+    annotate("text", 
+             y= max(pred.mod.after$fit),
+             x=min(pred.mod.after$obs),
+             label=paste0("% change = ", round(per.change.table$fit[3], 2)),
+             hjust=0, col='#e41a1c', size=4) 
+  
+  RF.fig.fit <- grid.arrange(grobs=list(mod.fig.before, mod.fig.after), nrow=1, top=responses[i])
+  
+  ggsave(file.path(path_to_results, 'Figures', 'PercentChange', site_name, paste0(responses[i], "_RFprediction.png")), RF.fig.fit, height=3, width=6, units='in')
+  
+  
+  fig.fit.6 <- grid.arrange(grobs=list(mlm.fig.before, mlm.fig.after,  glm.fig.before, glm.fig.after, mod.fig.before, mod.fig.after), nrow=3, top=responses[i])
+  
+  ggsave(file.path(path_to_results, 'Figures', 'PercentChange', site_name, paste0(responses[i], "_3Models_prediction.png")), fig.fit.6, height=9, width=6, units='in')
+  
+  
+  
+  #Quantile regression  
+  quan.fig.before <- ggplot(data=plot.table.before) + 
+    geom_errorbar(aes(x=obs, ymin=quantile..0.25, ymax=quantile..0.75), col='grey40', alpha=.5) + 
+    # geom_point(aes(x=obs, y=quantile..0.5)) +
+    geom_point(aes(x=obs, y=mean), col='black') +
+    # geom_errorbar(aes(x=obs, ymin=quantile..0.1, ymax=quantile..0.9)) + 
+    geom_abline() +
+    theme_bw() + 
+    labs(y='random forest fit',
+         x='observed value') +
+    annotate("text", 
+             y= min(plot.table.before$quantile..0.25, na.rm=T), 
+             x =max(plot.table.before$obs),
+             label="before", hjust=1, size=4) +
+    annotate("text", y= max(plot.table.before$quantile..0.75),
+             x =min(plot.table.before$obs),
+             label=paste("variance explained =", quan.r2),hjust=0) 
+  
+  quan.fig.after <-  ggplot(data=plot.table.after) + 
+    geom_errorbar(aes(x=obs, ymin=quantile..0.25, ymax=quantile..0.75), col='grey40', alpha=.5) + 
+    # geom_point(aes(x=obs, y=quantile..0.5)) +
+    geom_point(aes(x=obs, y=mean), col='black') +
+    
+    # geom_errorbar(aes(x=obs, ymin=quantile..0.1, ymax=quantile..0.9)) + 
+    geom_abline() +
+    theme_bw() + 
+    labs(y='random forest prediction',
+         x='observed value') +
+    annotate("text", 
+             y= min(plot.table.after$quantile..0.25, na.rm=T), 
+             x =max(plot.table.after$obs),
+             label="after", hjust=1, size=4) +
+    annotate("text", 
+             y= max(plot.table.after$quantile..0.75, na.rm=T),
+             x=min(plot.table.after$obs),
+             label=paste0("% change = ", round(per.change.table$fit[4], 2), " (", round(per.change.table$lwr[4], 2), " to ", round(per.change.table$upr[4], 2), ")"),
+             hjust=0, col='#e41a1c', size=4) 
+  
+  
+  quan.fig.fit <- grid.arrange(grobs=list(quan.fig.before, quan.fig.after), nrow=1, top=responses[i])
+  
+  ggsave(file.path(path_to_results, 'Figures', 'PercentChange', site_name, paste0(responses[i], "_QuantileForest_prediction.png")), quan.fig.fit, height=3, width=6, units='in')
   
   
   

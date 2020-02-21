@@ -45,7 +45,7 @@ concvars <- c('suspended_sediment_conc_mgL',
 
 #Identify rain variables
 rainvars <-c("rain", "duration", "Ievent", "I5", "I10", "I15", "I30", "I60",
-             "energy_m1", "erosivity_m1", "energy_m2", "erosivity_m2")
+             "energy_m1", "erosivity_m1", "energy_m2", "erosivity_m2", "weq")
 
 
 #Identify sites

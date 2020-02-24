@@ -81,10 +81,15 @@ goodvars <- c('suspended_sediment_load_pounds',
 goodcolumns <- which(names(data_df) %in% goodvars)
 
 loadcolumns <- which(grepl("load", names(data_df), ignore.case=T))
-
 badcolumns <- setdiff(loadcolumns, goodcolumns)
-
 badnames<- names(data_df)[badcolumns]
+
+runoffcolumns <- which(grepl("runoff", names(data_df), ignore.case=T))
+names(data_df)[runoffcolumns]
+
+data_df$runoff_volume[which(is.na(data_df$runoff_volume))] <- data_df$storm_runoff_cubic_feet[which(is.na(data_df$runoff_volume))]
+
+
 
 if (identical(badnames, c("no2_no3_n_load_pounds", "total_phosphorus_unfiltered_load_pounds",
                           "total_nitrogen_computed_load_pounds", "organic_nitrogen_computed_load_pounds",
@@ -118,7 +123,8 @@ for (var in 1:length(badnames)){
     }
 
 data_df <- data_df %>%
-  dplyr::select(-badnames)
+  dplyr::select(-badnames, -storm_runoff_cubic_feet)
+
 
 
 

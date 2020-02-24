@@ -72,14 +72,4 @@ saveRDS(data_df3 , file=(file_out(file.path(path_to_data, "compiled_data", "stor
 write.csv(data_df3, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_conc_allsites_model.csv" ))), row.names=F)
 
 
-#Calculate means for all variables by site, wateryear, and period (before/after) treatment
-data_wateryear_summary <- data_df2 %>%
-  group_by (site, wateryear, period, frozen) %>%
-  select(-storm_middate) %>%
-  # filter(frozen == FALSE) %>% 
-  summarize_all(mean, na.rm=T)
-
-data_wateryear_summary
-
-#Continue summarizing for matching with soil data
 

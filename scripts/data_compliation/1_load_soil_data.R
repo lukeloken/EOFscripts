@@ -30,7 +30,7 @@ soil_fall <- soil_fall[,colSums(is.na(soil_fall))<nrow(soil_fall)]
 
 soil_fall_summary <- soil_fall %>%
   dplyr::group_by(Site, Manure) %>%
-  summarize_at(vars(Bulk_Den:Penotrometer_6_18), mean, na.rm=T) %>%
+  summarize_at(vars(Bulk_Den:Penotrometer_6_18), median, na.rm=T) %>%
   select_if(~sum(!is.na(.)) > 0) %>%
   mutate(Depth = "0-15") %>%
   rename(OM_fall = OM,

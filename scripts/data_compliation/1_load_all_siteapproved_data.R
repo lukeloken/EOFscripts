@@ -13,6 +13,10 @@ allsites_list <-list()
 approved_files <- list.files(file.path(path_to_data, "field_analysis", "approved_site_data"))
 approved_files <- approved_files[grepl(".csv", approved_files)]
 approved_files <- approved_files[which(grepl("Management", approved_files)==FALSE)]
+approved_files <- approved_files[which(grepl("_orig", approved_files)==FALSE)]
+approved_files <- approved_files[which(grepl("NYTL", approved_files)==FALSE)]
+
+
 
 file_nu =1
 for (file_nu in 1:length(approved_files)){
@@ -88,7 +92,7 @@ if (identical(badnames, c("no2_no3_n_load_pounds", "total_phosphorus_unfiltered_
                           "NO2.NO3.N..Load..pounds", "Ammonium..N..Load..pounds",
                           "TKN.Unfiltered.Load..pounds", "Dissolved.Reactive.Phosphorus.Load..pounds",
                           "TP.Unfiltered.Load..pounds", "Total.Nitrogen.Load..in.pounds",
-                          "Organic.Nitrogen.Load..pounds", "total_nitrogen_load_in_pounds")
+                          "Organic.Nitrogen.Load..pounds")
               )==FALSE) {
   
   stop("check column names in '1_load_all_siteapproved_data.R'. Trying to merge columns, and more columns need to be identified")
@@ -127,7 +131,21 @@ merged_sites <- arrange(merged_sites, sites)
 
 }
 
-print(merged_sites)
+if (nrow(merged_sites) != 20){
+  warning(paste0(toString(nrow(merged_sites)), " sites in dataset. Should be 20"))
+  print(merged_sites)
+} else {
+  print("20 sites in dataset. Great job!!!")
+}
+
 
 head(data_df)
+
+
+site_area <- data_df %>%
+  mutate(area_SS = suspended_sediment_load_pounds/suspended_sediment_yield_pounds_per_acre,
+         area_TP = tp_unfiltered_load_pounds/tp_unfiltered_yield_pounds_per_acre,
+         area_NH4 = ammonium_n_load_pounds/ammonium_n_yield_pounds_per_acre) %>%
+  group_by(site) %>%
+  summarize_at(vars(area_SS, area_TP, area_NH4), .funs=median, na.rm=T)
 

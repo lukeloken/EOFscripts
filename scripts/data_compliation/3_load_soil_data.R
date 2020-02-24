@@ -12,9 +12,15 @@ soil_df <- read.csv(file_in(file.path(path_to_data, 'soil', 'raw_data', "EoF_Soi
 soil_dates<-data.frame(Site = c("WI-01", "WI-02", "WI-03", "WI-04", "WI-05", "OH-01", "MI-01", "MI-02", "IN-01", "IN-02", "NY-01", "NY-02", "NY-03", "NY-04" ), 
                        Date = as.Date(c("2016-06-21", "2016-06-21", "2016-06-21", "2016-06-22", "2016-06-22", "2016-06-14", "2016-06-14", "2016-06-14", "2016-06-13", "2016-06-13", "2016-06-16", "2016-06-16", "2016-06-16", "2016-06-16" ))) 
 soil_dates$Type <- rep('Spring', nrow(soil_dates))
-  
+
+
 #Add dates to spring
-soil_df <- full_join(soil_dates, soil_df) 
+# soil_dates$site_wq <-  c("WI-SW1", "WI-SW2", "WI-SW3", "WI-SW4", "WI-SW5", "OH-SW1", "MI-SW1", "MI-SW2", "IN-SW1", "IN-SW2", "NY-SW1", "NY-SW2", "NY-SW3", "NY-SW4" )
+
+soil_df <- full_join(soil_dates, soil_df)
+
+soil_df$Site <- gsub("-0", "-SW", soil_df$Site)
+
 
 #subset fall data
 soil_fall <- filter(soil_df, Type=='Fall') %>%
@@ -62,7 +68,7 @@ soil_df3 <- soil_df2 %>%
 intersect(names(soil_df3), names(soil_fall_summary))
 
 soil_joined <- full_join(soil_df3, soil_fall_summary) %>%
-  mutate(WaterYear = getWY(Date)) %>%
+  mutate(wateryear = getWY(Date)) %>%
   rename(OM_spring = OM, Bulk_Den_spring = Bulk_Den)
 
 soil_0_15 <- filter(soil_joined, Depth == "0-15") %>%

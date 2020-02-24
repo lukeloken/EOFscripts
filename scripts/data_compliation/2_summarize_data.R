@@ -51,7 +51,7 @@ data_df2 <- data_df %>%
   mutate(site = as.character(site),
          storm_middate = storm_start + difftime(storm_end, storm_start, units='secs')/2) %>%
   mutate(wateryear = as.factor(getWY (storm_middate))) %>%
-  select(-file_id, -unique_storm_number, -sub_storms, -rain_startdate, -rain_enddate, -storm_start, -storm_end, -sample_end, -sample_start, -ant_discharge_date)
+  dplyr::select(-file_id, -unique_storm_number, -sub_storms, -rain_startdate, -rain_enddate, -storm_start, -storm_end, -ant_discharge_date)
 
 # constants for converstions from load (pounds) and volume (cf) to concentration (mg/L)
 # 453592 mg per pound
@@ -74,9 +74,9 @@ write.csv(data_df3, file=(file_out(file.path(path_to_data, "compiled_data", "sto
 
 #Calculate means for all variables by site, wateryear, and period (before/after) treatment
 data_wateryear_summary <- data_df2 %>%
-  group_by (site, wateryear, period) %>%
+  group_by (site, wateryear, period, frozen) %>%
   select(-storm_middate) %>%
-  filter(frozen == FALSE) %>% 
+  # filter(frozen == FALSE) %>% 
   summarize_all(mean, na.rm=T)
 
 data_wateryear_summary

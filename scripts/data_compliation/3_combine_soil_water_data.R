@@ -14,10 +14,10 @@ soil_0_15 <- readRDS(file=file_out(file.path(path_to_data, 'soil', 'cleaned_data
 
 
 data_merge <- data_df3 %>%
-  filter(wateryear == unique(soil_0_15$wateryear)) %>%
+  filter(wateryear == unique(soil_0_15$wateryear),
+         frozen == FALSE) %>%
   mutate(wateryear = as.numeric(as.character(wateryear))) %>%
   rename(Site = site) %>%
-  # mutate(LoadPerAreaPerRain = )
   group_by(wateryear, Site) %>%
   summarize_at(concvars, .funs=mean, na.rm=T) %>%
   full_join(soil_0_15)

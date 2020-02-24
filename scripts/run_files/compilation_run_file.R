@@ -17,7 +17,7 @@ source('scripts/data_compliation/1_load_all_data.R')
 
 #load soil data
 # as of January 2020, this only includes spring 2016 and fall 2017 data
-source('scripts/data_compliation/3_load_soil_data.R')
+source('scripts/data_compliation/1_load_soil_data.R')
 
 
 

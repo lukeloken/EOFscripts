@@ -61,8 +61,25 @@ soil_df3 <- soil_df2 %>%
 
 intersect(names(soil_df3), names(soil_fall_summary))
 
-soil_joined <- full_join(soil_df3, soil_fall_summary)
+soil_joined <- full_join(soil_df3, soil_fall_summary) %>%
+  mutate(WaterYear = getWY(Date)) %>%
+  rename(OM_spring = OM, Bulk_Den_spring = Bulk_Den)
 
+soil_0_15 <- filter(soil_joined, Depth == "0-15") %>%
+  select_if(not_all_na)
+
+#save 0 to 15 cm depth for converging with water quality data
+write.csv(soil_0_15, file=file_out(file.path(path_to_data, 'soil', 'cleaned_data', 'Soil2016_0_to_15cm.csv')), row.names = F)
+
+saveRDS(soil_0_15, file=file_out(file.path(path_to_data, 'soil', 'cleaned_data', 'Soil2016_0_to_15cm.rds')))
+
+
+
+
+# ############################################
+#Plot
+#Should go to another script
+# ###########################################
 
 soilvars <- names(soil_df3)[5:ncol(soil_df3)]
 

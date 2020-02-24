@@ -139,13 +139,3 @@ if (nrow(merged_sites) != 20){
 }
 
 
-head(data_df)
-
-
-site_area <- data_df %>%
-  mutate(area_SS = suspended_sediment_load_pounds/suspended_sediment_yield_pounds_per_acre,
-         area_TP = tp_unfiltered_load_pounds/tp_unfiltered_yield_pounds_per_acre,
-         area_NH4 = ammonium_n_load_pounds/ammonium_n_yield_pounds_per_acre) %>%
-  group_by(site) %>%
-  summarize_at(vars(area_SS, area_TP, area_NH4), .funs=median, na.rm=T)
-

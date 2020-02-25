@@ -84,10 +84,13 @@ loadcolumns <- which(grepl("load", names(data_df), ignore.case=T))
 badcolumns <- setdiff(loadcolumns, goodcolumns)
 badnames<- names(data_df)[badcolumns]
 
+#Combine columns that are runoff
 runoffcolumns <- which(grepl("runoff", names(data_df), ignore.case=T))
 names(data_df)[runoffcolumns]
 
 data_df$runoff_volume[which(is.na(data_df$runoff_volume))] <- data_df$storm_runoff_cubic_feet[which(is.na(data_df$runoff_volume))]
+
+head(data_df)
 
 
 

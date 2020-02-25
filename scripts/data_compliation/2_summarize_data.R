@@ -31,7 +31,8 @@ loadvars <- c('suspended_sediment_load_pounds',
               'total_nitrogen_load_pounds',
               'organic_nitrogen_load_pounds',
               'toc_load_pounds',
-              'doc_load_pounds')
+              'doc_load_pounds',
+              'runoff_volume')
 
 #Identify concentration variables
 concvars <- c('suspended_sediment_conc_mgL', 
@@ -57,7 +58,8 @@ yieldvars <- c('suspended_sediment_yield_poundperAcre',
               'total_nitrogen_yield_poundperAcre',
               'organic_nitrogen_yield_poundperAcre',
               'toc_yield_poundperAcre',
-              'doc_yield_poundperAcre')
+              'doc_yield_poundperAcre',
+              'runoff_volume_cubicfootperAcre')
 
 #Identify rain variables
 rainvars <-c("rain", "duration", "Ievent", "I5", "I10", "I15", "I30", "I60",
@@ -77,7 +79,7 @@ data_df2 <- data_df %>%
 # 28.3168 Liters per cubic foot
 
 #Calculate concentration (mg per L) from load (pounds) and runoff volume (cf)
-conc_df <- data.frame(sapply(data_df2[,loadvars], function (x) x/data_df2$runoff_volume*453592/28.3168))
+conc_df <- data.frame(sapply(data_df2[,loadvars[-12]], function (x) x/data_df2$runoff_volume*453592/28.3168))
 colnames(conc_df) <- concvars
 
 # calculate yield (pounds per acre) 

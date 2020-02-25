@@ -84,7 +84,10 @@ colnames(conc_df) <- concvars
 yield_df <- data.frame(sapply(data_df[,loadvars], function (x) x/data_df2$Area_acres))
 colnames(yield_df) <- yieldvars
 
-yieldperweq_df <- data.frame(sapply(data_df[,loadvars], function (x) x/data_df2$Area_acres/data_df2$weq))
+weq_roundup <- data_df2$weq
+weq_roundup[which(weq_roundup==0)]<- 0.01
+
+yieldperweq_df <- data.frame(sapply(data_df[,loadvars], function (x) x/data_df2$Area_acres/weq_roundup))
 colnames(yieldperweq_df) <- paste0(yieldvars, "perInchWEQ")
 
 

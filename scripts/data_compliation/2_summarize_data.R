@@ -145,6 +145,9 @@ runoff_index_bysite <- ggplot(data_df3[which(data_df3$frozen == FALSE & data_df3
   
 print(runoff_index_bysite)
 
+ggsave(file_out(file.path(path_to_results, "Figures", "RunoffIndex_bySiteMonth.png")), runoff_index_bysite, height=7, width=10, units = 'in', dpi=320)
+
+
 #save rds file to the P drive
 #This file was created using the "1_load_all_data.R" script
 saveRDS(data_df3 , file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_conc_allsites_model.rds"))))

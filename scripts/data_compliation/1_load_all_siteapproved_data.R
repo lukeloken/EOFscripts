@@ -15,6 +15,7 @@ approved_files <- approved_files[grepl(".csv", approved_files)]
 approved_files <- approved_files[which(grepl("Management", approved_files)==FALSE)]
 approved_files <- approved_files[which(grepl("_orig", approved_files)==FALSE)]
 approved_files <- approved_files[which(grepl("NYTL", approved_files)==FALSE)]
+approved_files <- approved_files[which(grepl("paired", approved_files)==FALSE)]
 
 
 

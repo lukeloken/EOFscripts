@@ -6,6 +6,7 @@
 source('scripts/functions/fxns_data_compilation.R')
 source('scripts/functions/g_legend.R')
 source('scripts/functions/not_all_na.R')
+source('scripts/functions/ScaleYLog10Nice.R')
 
 #compile site approved data
 #These data contain estimated loads

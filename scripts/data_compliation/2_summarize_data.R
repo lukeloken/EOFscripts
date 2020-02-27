@@ -61,6 +61,7 @@ yieldvars <- c('suspended_sediment_yield_poundperAcre',
               'doc_yield_poundperAcre',
               'runoff_volume_cubicfootperAcre')
 
+
 #Identify rain variables
 rainvars <-c("rain", "duration", "Ievent", "I5", "I10", "I15", "I30", "I60",
              "energy_m1", "erosivity_m1", "energy_m2", "erosivity_m2")
@@ -92,14 +93,41 @@ weq_roundup[which(weq_roundup==0)]<- 0.01
 yieldperweq_df <- data.frame(sapply(data_df[,loadvars], function (x) x/data_df2$Area_acres/weq_roundup))
 colnames(yieldperweq_df) <- paste0(yieldvars, "perInchWEQ")
 
+#To convert from cubic foot per acre per inch to cubic meter per cubic meter 39.37/35.3147/4046.86
+yieldperweq_df[,which(grepl('runoff', colnames(yieldperweq_df)))] <- yieldperweq_df[,which(grepl('runoff', colnames(yieldperweq_df)))]*39.37/35.3147/4046.86
+colnames(yieldperweq_df)[which(grepl('runoff', colnames(yieldperweq_df)))] <- 'runoff_cubicmeter_percubicmeterWEQ'
 
+yieldperweqvars<-names(yieldperweq_df)
 
 #Bind concentration data frame to bigger data frame
 data_df3 <- bind_cols(data_df2, conc_df) %>%
   bind_cols(yield_df) %>%
-  bind_cols(yieldperweq_df)
+  bind_cols(yieldperweq_df) %>%
+  mutate(state=substr(site,1,2),
+         type = substr(site,4,5)) %>%
+  mutate(type_binary = match(type, unique(type)))
 
 
+runoff_summary <- data_df3 %>%
+  group_by(site) %>%
+  filter(frozen == FALSE) %>%
+  summarize_at(vars('runoff_cubicmeter_percubicmeterWEQ'), .funs=c(mean, median, sd), na.rm=T)
+
+#cut frozen
+runoff_index <- ggplot(data_df3[which(data_df3$frozen == FALSE),], aes(x=site, y=runoff_cubicmeter_percubicmeterWEQ, fill=state)) +
+  geom_hline(yintercept = 1) +
+  geom_jitter(width=.1, height=0, aes(col=state), alpha=.2, shape=16) + 
+  # geom_violin(draw_quantiles=c(.5), size=.5, aes(alpha=type_binary), trim=T) +
+  geom_boxplot(draw_quantiles=c(.5), size=.5, aes(alpha=type_binary), outlier.shape=NA) +
+  scale_alpha(range=c(.5,0), guide='none') + 
+  scale_y_log10nice(name = "runoff volume per weq volume", limits=c(.0003, 100)) +
+  theme_bw() +
+  theme(legend.position='bottom') +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+
+print(runoff_index)
+
+ggsave(file_out(file.path(path_to_results, "Figures", "RunoffIndex_boxplot.png")), runoff_index, height=4, width=5, units = 'in', dpi=320)
 
 
 #save rds file to the P drive

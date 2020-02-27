@@ -105,7 +105,8 @@ data_df3 <- bind_cols(data_df2, conc_df) %>%
   bind_cols(yieldperweq_df) %>%
   mutate(state=substr(site,1,2),
          type = substr(site,4,5)) %>%
-  mutate(type_binary = match(type, unique(type)))
+  mutate(type_binary = match(type, unique(type))) %>%
+  mutate(month = month(storm_middate))
 
 
 runoff_summary <- data_df3 %>%
@@ -129,6 +130,20 @@ print(runoff_index)
 
 ggsave(file_out(file.path(path_to_results, "Figures", "RunoffIndex_boxplot.png")), runoff_index, height=4, width=5, units = 'in', dpi=320)
 
+runoff_index_bysite <- ggplot(data_df3[which(data_df3$frozen == FALSE & data_df3$type == 'SW'),], aes(x=as.factor(month), y=runoff_cubicmeter_percubicmeterWEQ, fill=state)) +
+  geom_hline(yintercept = 1) +
+  geom_jitter(aes(fill=state), width=.1, height=0, alpha=.2, shape=21) + 
+  # geom_point() +
+  geom_boxplot(size=.5, outlier.shape=NA, alpha=.5) +
+  # geom_path() + 
+  facet_wrap(~site, scales = 'free_y') +
+  scale_y_log10nice(name = "runoff volume per weq volume", limits=c(.0003, 100)) +
+  scale_shape_manual(values=c(16,1)) +
+  scale_color_manual(values=c('black', 'grey')) + 
+  labs(x='Month') + 
+  theme_bw()
+  
+print(runoff_index_bysite)
 
 #save rds file to the P drive
 #This file was created using the "1_load_all_data.R" script

@@ -21,18 +21,29 @@ wq_vars <- c(loadvars, concvars, yieldvars, yieldperweqvars)
 
 data_merge <- data_df3 %>%
   mutate(wateryear = as.numeric(as.character(wateryear))) %>%
-  filter(wateryear == unique(soil_0_15$wateryear),
-         frozen == 0) %>%
-    rename(Site = site) %>%
+  filter(wateryear %in% c(2016:2017), frozen == 0) %>%
+  # filter(wateryear == unique(soil_0_15$wateryear), frozen == 0) %>%
+  rename(Site = site) %>%
   dplyr::select(wateryear, Site, wq_vars, peak_discharge, runoff_volume, rain) %>%
-  group_by(wateryear, Site) %>%
-  summarize_at(wq_vars, .funs=mean, na.rm=T) %>%
+  group_by(Site) %>%
+  summarize_at(wq_vars, .funs=median, na.rm=T) %>%
+  left_join(soil_0_15) %>%
+  drop_na(Manure) 
+
+data_merge_2016 <- data_df3 %>%
+  mutate(wateryear = as.numeric(as.character(wateryear))) %>%
+  # filter(wateryear %in% c(2016:2017), frozen == 0) %>%
+  filter(wateryear == unique(soil_0_15$wateryear), frozen == 0) %>%
+  rename(Site = site) %>%
+  dplyr::select(wateryear, Site, wq_vars, peak_discharge, runoff_volume, rain) %>%
+  group_by(Site) %>%
+  summarize_at(wq_vars, .funs=c(median, mean), na.rm=T) %>%
   left_join(soil_0_15) %>%
   drop_na(Manure) 
   
 
-# ggplot(data=data_merge, aes(x=Bray_P, y=orthophosphate_yield_poundperAcreperInchWEQ)) +
-#   geom_point(aes(color=Manure))
+# ggplot(data=data_merge_2016_2017, aes(x=Bray_P, y=orthophosphate_yield_poundperAcreperInchWEQ)) +
+  # geom_point(aes(color=Manure))
 # 
 # ggplot(data=data_merge, aes(x=OM_spring, y=orthophosphate_conc_mgL)) +
 #   geom_point(aes(color=Manure))
@@ -67,8 +78,8 @@ choice_soil <-  soil_vars[c(1:3,4:6,7:18, 19:23, 25:30)]
 
 
 wq_var<-1
-plot_list <-list()
-glm_list <- list()
+plot_list_yield <-list()
+glm_list_yield <- list()
 for (wq_var in 1:length(choice_yields)) {
 
   var_list <- list()
@@ -102,27 +113,27 @@ for (wq_var in 1:length(choice_yields)) {
 
   var_list[[length(choice_soil)+1]] <- g_legend(plot_withLegend)
   
-  plot_list[[wq_var]] <- grid.arrange(grobs=var_list, ncol=5, top=choice_yields[wq_var])
+  plot_list_yield[[wq_var]] <- grid.arrange(grobs=var_list, ncol=5, top=choice_yields[wq_var])
   
-  ggsave(file=file_out(file.path(path_to_results, 'Figures', 'Soil', 'SoilWQ_Scatter', paste(choice_yields[wq_var], ".png"))) , plot_list[[wq_var]], height=8, width=8)
+  ggsave(file=file_out(file.path(path_to_results, 'Figures', 'Soil', 'SoilWQ_Scatter', paste(choice_yields[wq_var], ".png"))) , plot_list_yield[[wq_var]], height=8, width=8)
     
 
   data.glm <- data_merge[c(choice_soil, choice_yields[wq_var])] %>%
     select_if(~ !any(is.na(.))) %>%
     data.frame()
 
-  glm_list[[wq_var]]<-bestglm(data.glm, family=gaussian, IC='BIC', nvmax=3)
+  glm_list_yield[[wq_var]]<-bestglm(data.glm, family=gaussian, IC='BIC', nvmax=3)
   print(choice_yields[wq_var])
-  glm_list[[wq_var]]
-  summary(glm_list[[wq_var]])
+  glm_list_yield[[wq_var]]
+  summary(glm_list_yield[[wq_var]])
   
 }
 
 
 #Similar figures for concentration
 wq_var<-1
-plot_list <-list()
-glm_list <- list()
+plot_list_conc <-list()
+glm_list_conc <- list()
 for (wq_var in 1:length(choice_conc)) {
   
   var_list <- list()
@@ -156,19 +167,19 @@ for (wq_var in 1:length(choice_conc)) {
   
   var_list[[length(choice_soil)+1]] <- g_legend(plot_withLegend)
   
-  plot_list[[wq_var]] <- grid.arrange(grobs=var_list, ncol=5, top=choice_conc[wq_var])
+  plot_list_conc[[wq_var]] <- grid.arrange(grobs=var_list, ncol=5, top=choice_conc[wq_var])
   
-  ggsave(file=file_out(file.path(path_to_results, 'Figures', 'Soil', 'SoilWQ_Scatter', paste(choice_conc[wq_var], ".png"))) , plot_list[[wq_var]], height=8, width=8)
+  ggsave(file=file_out(file.path(path_to_results, 'Figures', 'Soil', 'SoilWQ_Scatter', paste(choice_conc[wq_var], ".png"))) , plot_list_conc[[wq_var]], height=8, width=8)
   
   
   data.glm <- data_merge[c(choice_soil, choice_conc[wq_var])] %>%
     select_if(~ !any(is.na(.))) %>%
     data.frame()
   
-  glm_list[[wq_var]]<-bestglm(data.glm, family=gaussian, IC='BIC', nvmax=3)
+  glm_list_conc[[wq_var]]<-bestglm(data.glm, family=gaussian, IC='BIC', nvmax=3)
   print(choice_conc[wq_var])
-  glm_list[[wq_var]]
-  summary(glm_list[[wq_var]])
+  glm_list_conc[[wq_var]]
+  summary(glm_list_conc[[wq_var]])
   
 }
 

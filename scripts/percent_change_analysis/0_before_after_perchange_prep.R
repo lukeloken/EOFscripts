@@ -13,7 +13,10 @@ dat.mod <- dat[dat.mod, ]
 
 # get rid of highly correlated variables
 which.frozen <- which(predictors %in% 'frozen')
-predictors.cor <- cor(dat[,predictors[-which.frozen]], use = 'complete.obs') # drop var "crop" from correlation since it's a categorical var
+
+cor.vars <- predictors[-which.frozen]
+cor.vars <- cor.vars[which(sapply(dat[cor.vars], sd) >0)]
+predictors.cor <- cor(dat[,cor.vars], use = 'complete.obs') # drop var "crop" from correlation since it's a categorical var
 names.cor <- row.names(predictors.cor)
 drop.predictors <- caret::findCorrelation(predictors.cor, cutoff = 0.95, verbose = FALSE, exact = TRUE)
 

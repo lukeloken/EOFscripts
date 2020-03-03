@@ -78,15 +78,19 @@ states <- c("IN", "MI", "WI", "OH", "NY")
 
 
 site_nu <- 17
-for (site_nu in 1:length(all_sites)){
+for (site_nu in 15:length(all_sites)){
   site_name <- all_sites[site_nu]
   print(site_name)
+  
+  state <- substr(site_name, 1,2)
   
   folders<-list.files(file.path(path_to_data, "field_analysis", "results", site_name))
   
       #Subset to only one site and drop all columns with NAs
     dat <- filter(data_df, site == site_name) %>%
       select_if(not_all_na)
+  
+  # dat <- filter(data_df, site == site_name) 
     
     if (nrow(dat)==0){
       warning(paste(site_nu, " is not included in compiled data. Skipping"))
@@ -103,7 +107,7 @@ for (site_nu in 1:length(all_sites)){
     
     
     if (length(modvars_files) == 0){
-      warning(paste("folder contains no `modvars.Rdata` file.", toString(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "cache" ))))
+      warning(paste("folder contains no `modvars.Rdata` file.", toString(file.path(path_to_data, "field_analysis", "results", site_name, recent_folder, "cache" ))))
     } else { 
       if (length(modvars_files)>1){
         
@@ -151,14 +155,14 @@ for (site_nu in 1:length(all_sites)){
     source('scripts/percent_change_analysis/2_before_after_perchange_mlm.R', echo = F)
     
     per.change.tableout
-    temp_filename <- file.path('data_cached', paste0(site_nu, '_percent_reduction_before_after_mlm.csv'))
+    # temp_filename <- file.path('data_cached', paste0(site_nu, '_percent_reduction_before_after_mlm.csv'))
     # write.csv(per.change.tableout, temp_filename, row.names = F)
     
-    per.change.list.allsites[[which(site_nu==all_sites)]] <- per.change.tableout
-    names(per.change.list.allsites)[[which(site_nu==all_sites)]] <-site_nu
+    # per.change.list.allsites[[which(site_nu==all_sites)]] <- per.change.tableout
+    # names(per.change.list.allsites)[[which(site_nu==all_sites)]] <-site_nu
     #end
-  }
-  
 }
+
+  
 
 per.change.df.allsites <-ldply(per.change.list.allsites, data.frame, .id='site')

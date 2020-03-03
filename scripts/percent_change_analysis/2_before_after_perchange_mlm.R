@@ -593,7 +593,7 @@ perc_reduction <- data.frame(response = responses[-length(responses)],
 if(length(per.change.list) ==0){
   warning("No response variables had detected changes")
   next
-}
+} else {
 
 per.change.tableout <-ldply(per.change.list, data.frame, .id = "variable") 
 
@@ -626,3 +626,4 @@ per.change.allvars <- ggplot(per.change.tableout[per.change.tableout$model =='qu
 
 ggsave(file=file.path(path_to_results, "Figures", "PercentChange", site_name, "Percent_change_allvars.png"), per.change.allvars, width=5, height=4, units='in')
 
+}

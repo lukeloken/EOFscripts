@@ -189,17 +189,25 @@ for (i in 1:(length(responses)-1)) {
   # ###########################
   
   mod.equation <- as.formula(paste(responses[i], paste(predictors.keep, collapse = " + "), sep = " ~ "))
-  
+  if (nrow(dat.mod.before) >10){ 
   mod.before <- randomForest(mod.equation, data = dat.mod.before, importance = T, na.action = na.omit, ntree = 1000)
-  mod.after <- randomForest(mod.equation, data = dat.mod.after, importance = T, na.action = na.omit, ntree = 1000)
-  
-  
   pred.mod.before <- predict(mod.before, dat.mod.before, interval = 'confidence')
-  pred.mod.after <- predict(mod.before, dat.mod.after, interval = 'confidence')
   
   pred.mod.before <- data.frame(obs = dat.mod.before[,responses[i]]) %>%
     bind_cols(as.data.frame(pred.mod.before)) %>%
     rename(fit = pred.mod.before)
+  
+  mod.r2.before <-  round(mod.before$rsq[500], 2)
+  
+  top.vars.before <- pdp::topPredictors(mod.before, n = 5)
+  
+  top.vars.both <- unique(top.vars.before)
+  
+  }
+  
+  if (nrow(dat.mod.after) >10){ 
+  mod.after <- randomForest(mod.equation, data = dat.mod.after, importance = T, na.action = na.omit, ntree = 1000)
+  pred.mod.after <- predict(mod.before, dat.mod.after, interval = 'confidence')
   
   pred.mod.after <- data.frame(obs = dat.mod.after[,responses[i]]) %>%
     bind_cols(as.data.frame(pred.mod.after)) %>%
@@ -207,7 +215,11 @@ for (i in 1:(length(responses)-1)) {
   
   mod.summary <- colSums(10^pred.mod.after)
   
-  mod.r2.before <-  round(mod.before$rsq[500], 2)
+  top.vars.after <- pdp::topPredictors(mod.after, n = 5)
+  
+  top.vars.both <- unique(c(top.vars.before, top.vars.after))
+  
+  }
   
   
   
@@ -236,24 +248,24 @@ for (i in 1:(length(responses)-1)) {
   
   #Assess fit of model
   conditionalQuantiles.before <- predict(quan.before, x.quan.before, what=seq(0.05, .95, .05))
-  print(conditionalQuantiles.before[1:4,])
+  # print(conditionalQuantiles.before[1:4,])
   
   conditionalMean.before <- predict(quan.before, x.quan.before, what=mean)
-  print(conditionalMean.before[1:4])
+  # print(conditionalMean.before[1:4])
   
   conditionalSd.before <- predict(quan.before, x.quan.before, what=sd)
-  print(conditionalSd.before[1:4])
+  # print(conditionalSd.before[1:4])
   
   
   #Predict future using pre-model
   conditionalQuantiles.after <- predict(quan.before, x.quan.after, what=seq(0.05, .95, .05))
-  print(conditionalQuantiles.after[1:4,])
+  # print(conditionalQuantiles.after[1:4,])
   
   conditionalMean.after <- predict(quan.before, x.quan.after, what=mean)
-  print(conditionalMean.after[1:4])
+  # print(conditionalMean.after[1:4])
   
   conditionalSd.after <- predict(quan.before, x.quan.after, what=sd)
-  print(conditionalSd.after[1:4])
+  # print(conditionalSd.after[1:4])
   
   
   #Organize for plotting
@@ -276,12 +288,7 @@ for (i in 1:(length(responses)-1)) {
   # Code is currently nested within the bigger script, which might need to change
   # #########################################
   
-  # get top random forest varaibles to use for multilinear models 
-  top.vars.before <- pdp::topPredictors(mod.before, n = 5)
-  top.vars.after <- pdp::topPredictors(mod.after, n = 5)
-  
-  top.vars.both <- unique(c(top.vars.before, top.vars.after))
-  
+
   #Build equation for model expression
   mlm.equation <- as.formula(paste(responses[i], paste(top.vars.both, collapse = " + "), sep = " ~ "))
   
@@ -293,21 +300,21 @@ for (i in 1:(length(responses)-1)) {
   
   #Models based on before/after data separately
   mlm.before <- lm(mlm.equation, data = dat.mod.before)
-  mlm.after <- lm(mlm.equation, data = dat.mod.after)
+  # mlm.after <- lm(mlm.equation, data = dat.mod.after)
   
   
   #For bestglm, response variable is last column, predictor variables are all except last column
   data.glm <- dat.mod[c(top.vars.both, responses[i])]
   data.glm.before <- dat.mod.before[c(top.vars.both, responses[i])]
-  data.glm.after <- dat.mod.after[c(top.vars.both, responses[i])]
+  # data.glm.after <- dat.mod.after[c(top.vars.both, responses[i])]
   
   glm<-bestglm(data.glm, family=gaussian, IC='BIC', nvmax=5)
   
   glm.before<-bestglm(data.glm.before, family=gaussian, IC='BIC', nvmax=5)
   glm.before
   
-  glm.after<-bestglm(data.glm.after, family=gaussian, IC='BIC', nvmax=5)
-  glm.after
+  # glm.after<-bestglm(data.glm.after, family=gaussian, IC='BIC', nvmax=5)
+  # glm.after
   
   #Pull R2 from model
   mlm.r2.before <- summary(mlm.before)$r.squared

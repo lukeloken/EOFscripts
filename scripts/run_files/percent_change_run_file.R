@@ -53,9 +53,9 @@ responses_clean <- c("suspended_sediment_load_pounds", "chloride_load_pounds",
 #Load compiled data from P drive. 
 #This data is the output from the compilation script
 #Rather could use the 'mod' file in each site sub-folder
-data_df <- readRDS(file=(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_conc_allsites_model.rds" ))))
+data_df <- readRDS(file=(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_model_data.rds" ))))
 
-all_sites <- unique(data_df$site)
+all_sites <- as.character(unique(data_df$site))
 
 # Loop through each site and perform the same analysis
 #Eventually each of these 'steps' will be there own script. 
@@ -77,8 +77,8 @@ states <- c("IN", "MI", "WI", "OH", "NY")
 
 
 
-site_nu <- 17
-for (site_nu in 15:length(all_sites)){
+site_nu <- 7
+for (site_nu in 7:length(all_sites)){
   site_name <- all_sites[site_nu]
   print(site_name)
   
@@ -107,8 +107,13 @@ for (site_nu in 15:length(all_sites)){
     
     
     if (length(modvars_files) == 0){
+      if (state == 'NY') {
+        modvars_files <- "P:/0301/field_analysis/results/NY-SW4/2020-02-20-1027/cache/modvars.Rdata"
+        warning(paste0("no modvars.Rdata file. Used NY-SW4 file for", toString(site_name)))
+      } else {
       warning(paste("folder contains no `modvars.Rdata` file.", toString(file.path(path_to_data, "field_analysis", "results", site_name, recent_folder, "cache" ))))
-    } else { 
+    }
+      } else { 
       if (length(modvars_files)>1){
         
         modvars_files <- modvars_files[which.min(nchar(modvars_files))]
@@ -117,6 +122,7 @@ for (site_nu in 15:length(all_sites)){
         warning(paste("More than 1 file listed with 'modvars.Rdata'. Used file with shortest name:", modvars_name, "    Check folder:",  toString(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "cache" ))))
       } 
     }
+    
     
     load(file = modvars_files)
     
@@ -129,10 +135,12 @@ for (site_nu in 15:length(all_sites)){
     
     responses <- responses_clean
     
-    if(site_name =='NY-SW4'){
-      warning("skipping site NY-SW4. predictor vars not correct")
-      next
-    }
+    # if(site_name =='NY-SW4'){
+    #   warning("skipping site NY-SW4. predictor vars not correct")
+    #   next
+    # }
+    
+    predictors <- intersect(predictors, names(dat))
     
     #create direcotry for figures
     dir.create(file.path(path_to_results, 'Figures', 'PercentChange', site_name), showWarnings = F)

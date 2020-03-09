@@ -1,6 +1,7 @@
 
 #Step 1 of percent change analysis
 #Generate random forest of whole dataset
+library(randomForestExplainer)
 
 dat.mod.before <- filter(dat.mod, period == 'before')
 
@@ -18,6 +19,12 @@ for (i in 1:length(responses)) {
   # create random forest model - before data
   #mod <- randomForest(mod.equation, data = dat.mod, importance = T, na.action = na.omit)
   mod.before <- randomForest(mod.equation, data = dat.mod.before, importance = T, na.action = na.omit, ntree = 1000)
+  
+  #Look at Random Forest Model
+  # print(randomForest::varImpPlot(mod.before))
+  # str(mod.before$forest)
+  # measure_importance(mod.before)
+  # explain_forest(mod.before)
   
   perc.var[i] <- round(mod.before$rsq[1000]*100, 1)
   

@@ -77,7 +77,7 @@ states <- c("IN", "MI", "WI", "OH", "NY")
 
 
 
-site_nu <- 7
+site_nu <- 17
 for (site_nu in 7:length(all_sites)){
   site_name <- all_sites[site_nu]
   print(site_name)

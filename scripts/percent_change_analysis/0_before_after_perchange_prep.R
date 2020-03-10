@@ -23,9 +23,12 @@ drop.predictors <- caret::findCorrelation(predictors.cor, cutoff = 0.95, verbose
 predictors.keep <- c(names.cor[-drop.predictors], 'frozen')
 
 # log transform response vars
-dat.mod[,responses] <- log10(dat.mod[,responses])
-sums <- colSums(dat.mod[,responses])
+dat.mod.log10 <- dat.mod
+dat.mod.log10[,responses] <- log10(dat.mod[,responses])
+
+sums <- colSums(dat.mod.log10[,responses])
 if(any(is.infinite(sums))) {
   stop('Zeros in the response variables caused values to be infinite when log transformed. Please see code in scripts/data_analysis/0_before_after_datmod_prep.R to debug.', call. = F)
 }
+
 

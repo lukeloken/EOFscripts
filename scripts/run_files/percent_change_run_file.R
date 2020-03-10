@@ -50,6 +50,15 @@ responses_clean <- c("suspended_sediment_load_pounds", "chloride_load_pounds",
                      "tp_unfiltered_load_pounds", "total_nitrogen_load_pounds", 
                      "organic_nitrogen_load_pounds", "peak_discharge", "runoff_volume") 
 
+predictors_all <- c("weq" , "duration", "Ievent", "I5", "I10", "I15", "I30", "I60",          
+                    "energy_m1", "erosivity_m1", "energy_m2", "erosivity_m2", 
+                    "ARFdays1", "ARFdays2" , "ARFdays7"  , "ARFdays14", "sin_sdate", "cos_sdate",
+                    "tmax","tmin", "days_since_planting", "days_since_fertilizer",
+                    "days_since_cultivation", "days_since_disturbance", "ant_dis_1day_sum",
+                    "ant_dis_2day_sum", "ant_dis_3day_sum", "ant_dis_7day_sum","ant_dis_14day_sum",
+                    "frozen" )
+
+
 #Load compiled data from P drive. 
 #This data is the output from the compilation script
 #Rather could use the 'mod' file in each site sub-folder
@@ -75,10 +84,10 @@ per.change.list.allsites<-list()
 # states <- list.files(file.path(path_to_data, "analysis"))
 states <- c("IN", "MI", "WI", "OH", "NY")
 
+predictors_list <- list()
 
-
-site_nu <- 15
-for (site_nu in 7:length(all_sites)){
+site_nu <- 1
+for (site_nu in 1:length(all_sites)){
   site_name <- all_sites[site_nu]
   print(site_name)
   
@@ -97,45 +106,45 @@ for (site_nu in 7:length(all_sites)){
       next
     }
     
-    #Identify rundates files
-    rundates <- as.Date(paste0(folders, "-01"), format="%Y-%m-%d")
-    recent_folder <- folders[which.max(rundates)]
-    
-    cache <- list.files(file.path(path_to_data, "field_analysis", "results", site_name, recent_folder, "cache" ), full.names=T)
-    
-    modvars_files <- cache[grepl("modvars.Rdata" , cache)]
-    
-    
-    if (length(modvars_files) == 0){
-      if (state == 'NY') {
-        modvars_files <- "P:/0301/field_analysis/results/NY-SW4/2020-02-20-1027/cache/modvars.Rdata"
-        warning(paste0("no modvars.Rdata file. Used NY-SW4 file for", toString(site_name)))
-      } else if (state == 'WI'){
-        modvars_files <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth/Data/modvars.Rdata"
-        warning(paste0("no modvars.Rdata file. Used WI-SW1 file for", toString(site_name)))
-      } else {
-      warning(paste("folder contains no `modvars.Rdata` file.", toString(file.path(path_to_data, "field_analysis", "results", site_name, recent_folder, "cache" ))))
-    }
-      } else { 
-      if (length(modvars_files)>1){
-        
-        modvars_files <- modvars_files[which.min(nchar(modvars_files))]
-        modvars_name <- tail(unlist(strsplit(modvars_files[1], split='/')),1)
-        
-        warning(paste("More than 1 file listed with 'modvars.Rdata'. Used file with shortest name:", modvars_name, "    Check folder:",  toString(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "cache" ))))
-      } 
-    }
-    
-    
-    load(file = modvars_files)
-    
-    
-    if(nrow(dat)==0) {
-      warning(paste0("Skipping folder ", toString(site_nu), ". Folder name does not match compiled data.frame site name. Check folder and site names"))
-      next
-      rm(responses, predictors)
-    }
-    
+    # #Identify rundates files
+    # rundates <- as.Date(paste0(folders, "-01"), format="%Y-%m-%d")
+    # recent_folder <- folders[which.max(rundates)]
+    # 
+    # cache <- list.files(file.path(path_to_data, "field_analysis", "results", site_name, recent_folder, "cache" ), full.names=T)
+    # 
+    # modvars_files <- cache[grepl("modvars.Rdata" , cache)]
+    # 
+    # 
+    # if (length(modvars_files) == 0){
+    #   if (state == 'NY') {
+    #     modvars_files <- "P:/0301/field_analysis/results/NY-SW4/2020-02-20-1027/cache/modvars.Rdata"
+    #     warning(paste0("no modvars.Rdata file. Used NY-SW4 file for", toString(site_name)))
+    #   } else if (state == 'WI'){
+    #     modvars_files <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth/Data/modvars.Rdata"
+    #     warning(paste0("no modvars.Rdata file. Used WI-SW1 file for", toString(site_name)))
+    #   } else {
+    #   warning(paste("folder contains no `modvars.Rdata` file.", toString(file.path(path_to_data, "field_analysis", "results", site_name, recent_folder, "cache" ))))
+    # }
+    #   } else { 
+    #   if (length(modvars_files)>1){
+    #     
+    #     modvars_files <- modvars_files[which.min(nchar(modvars_files))]
+    #     modvars_name <- tail(unlist(strsplit(modvars_files[1], split='/')),1)
+    #     
+    #     warning(paste("More than 1 file listed with 'modvars.Rdata'. Used file with shortest name:", modvars_name, "    Check folder:",  toString(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "cache" ))))
+    #   } 
+    # }
+    # 
+    # 
+    # load(file = modvars_files)
+    # 
+    # 
+    # if(nrow(dat)==0) {
+    #   warning(paste0("Skipping folder ", toString(site_nu), ". Folder name does not match compiled data.frame site name. Check folder and site names"))
+    #   next
+    #   rm(responses, predictors)
+    # }
+    # 
     responses <- responses_clean
     
     # if(site_name =='NY-SW4'){
@@ -143,7 +152,9 @@ for (site_nu in 7:length(all_sites)){
     #   next
     # }
     
-    predictors <- intersect(predictors, names(dat))
+    predictors <- intersect(predictors_all, names(dat))
+    # predictors_list[[(length(predictors_list)+1)]] <- predictors
+    # names(predictors_list)[[(length(predictors_list))]] <- site_name
     
     #create direcotry for figures
     dir.create(file.path(path_to_results, 'Figures', 'PercentChange', site_name), showWarnings = F)
@@ -174,6 +185,5 @@ for (site_nu in 7:length(all_sites)){
     #end
 }
 
-  
 
 per.change.df.allsites <-ldply(per.change.list.allsites, data.frame, .id='site')

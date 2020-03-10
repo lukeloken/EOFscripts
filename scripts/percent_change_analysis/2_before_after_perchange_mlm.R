@@ -140,6 +140,8 @@ test <- nrow(before_after_resid[!is.na(before_after_resid$perc_var), ])
 
 #####################################
 ## now calculate % change if difference
+#lots of these are copy/paste from orig script
+# ####################################
 before.fit <- c()
 after.fit <- c()
 mean.diff <- c()
@@ -189,6 +191,8 @@ for (i in 1:(length(responses)-1)) {
   # ###########################
   
   mod.equation <- as.formula(paste(responses[i], paste(predictors.keep, collapse = " + "), sep = " ~ "))
+  
+  #Only run forest if more than 10 observations before/after
   if (nrow(dat.mod.before) >10){ 
   mod.before <- randomForest(mod.equation, data = dat.mod.before, importance = T, na.action = na.omit, ntree = 1000)
   pred.mod.before <- predict(mod.before, dat.mod.before, interval = 'confidence')
@@ -221,8 +225,6 @@ for (i in 1:(length(responses)-1)) {
   
   }
   
-  
-  
   # ###########################
   # Quantile regression forest
   # ###########################
@@ -240,9 +242,11 @@ for (i in 1:(length(responses)-1)) {
   y.quan.after <- dat.mod.after %>%
     select(responses[i])
   
-  #Make quantine regression forest using pre data
+  #Make quantile regression forest using pre data
   quan.before <- quantregForest(x=x.quan.before, y=y.quan.before[,1], importance = T, na.action = na.omit, ntree = 1000)
   # quan.after <- quantregForest(x=x.quan.after, y=y.quan.after[,1], importance = T, na.action = na.omit, ntree = 1000)
+  
+  # print(randomForest::varImpPlot(quan.before))
   
   quan.r2 <- round(quan.before$rsq[500], 2)
   
@@ -277,11 +281,20 @@ for (i in 1:(length(responses)-1)) {
   plot.table.after <- data.frame(conditionalQuantiles.after) %>%
     bind_cols(obs = y.quan.after[,1]) %>%
     bind_cols(mean = conditionalMean.after) %>%
-    bind_cols(sd = conditionalSd.after) 
+    bind_cols(sd = conditionalSd.after) %>%
+    mutate(meanPlusSD = mean + sd,
+           meanMinusSD = mean - sd,
+           perdiff.mean = (10^obs - 10^mean)/(10^obs),
+           perdiff.median = (10^obs - 10^quantile..0.5)/(10^obs))
   
-  #Convert to actual units
+  median(plot.table.after$perdiff.median)
+  mean(plot.table.after$perdiff.mean)
+  
+  #Convert to actual units and add up all rows
   quan.summary <- colSums(10^plot.table.after, na.rm=T)
   
+  #Calculate sum of squared sd's. For error probogation (maybe)
+  quan.sd <- sqrt(sum((10^plot.table.after$sd)^2, na.rm=T))
 
   # #######################################
   # Use top 5 model random forest predictors from before and after to generate a multiple linear model
@@ -349,9 +362,14 @@ for (i in 1:(length(responses)-1)) {
   # make percent change table and merge with random/quntile forest predictions
   # ##################################################################
   
-  per.change.table <- data.frame(matrix(ncol=4, nrow=4))
+  per.change.table <- data.frame(matrix(ncol=8, nrow=4))
   names(per.change.table) <- names(mlm.summary)
   names(per.change.table)[1] <- c('model')
+  names(per.change.table)[5] <- c('lwr2')
+  names(per.change.table)[6] <- c('upr2')
+  names(per.change.table)[7] <- c('lwr3')
+  names(per.change.table)[8] <- c('upr3')
+  
   
   per.change.table$model[1] <- 'mlm'
   per.change.table$fit[1] <- round((mlm.summary['obs'] - mlm.summary['fit'])/mlm.summary['obs']*100)
@@ -368,9 +386,19 @@ for (i in 1:(length(responses)-1)) {
   
   #Save 25% and 75% quantile prediction intervals
   per.change.table$model[4] <- 'quan'
-  per.change.table$fit[4] <- round((quan.summary['obs'] - quan.summary['quantile..0.5'])/quan.summary['obs']*100)
-  per.change.table$lwr[4] <- round((-1)*(quan.summary['quantile..0.75'] - quan.summary['obs'])/quan.summary['obs']*100)
-  per.change.table$upr[4] <- round((-1)*(quan.summary['quantile..0.25'] - quan.summary['obs'])/quan.summary['obs']*100)
+  per.change.table$fit[4] <- round((quan.summary['obs'] - quan.summary['mean'])/quan.summary['obs']*100)
+  
+  # #Error propogation using quantile regression forests 85 and 15% are about 1 sd
+  # per.change.table$lwr[4] <- round((-1)*(quan.summary['quantile..0.85'] - quan.summary['obs'])/quan.summary['obs']*100)
+  # per.change.table$upr[4] <- round((-1)*(quan.summary['quantile..0.15'] - quan.summary['obs'])/quan.summary['obs']*100)
+  # 
+  # #Error propogation using mean plus/minus sd before summing
+  # per.change.table$lwr[4] <- round((quan.summary['obs'] - quan.summary['meanPlusSD'])/quan.summary['obs']*100)
+  # per.change.table$upr[4] <- round((quan.summary['obs'] - quan.summary['meanMinusSD'])/quan.summary['obs']*100)
+  # 
+  #Error propogation using sum of squared sd's
+  per.change.table$lwr[4] <- round((quan.summary['obs'] - quan.summary['mean']-quan.sd)/quan.summary['obs']*100)
+  per.change.table$upr[4] <- round((quan.summary['obs'] - quan.summary['mean']+quan.sd)/quan.summary['obs']*100)
   
   
   #Save models and percent change table
@@ -489,15 +517,12 @@ for (i in 1:(length(responses)-1)) {
   ggsave(file.path(path_to_results, 'Figures', 'PercentChange', site_name, paste0(responses[i], "_RFprediction.png")), RF.fig.fit, height=3, width=6, units='in')
   
   
-  fig.fit.6 <- grid.arrange(grobs=list(mlm.fig.before, mlm.fig.after,  glm.fig.before, glm.fig.after, mod.fig.before, mod.fig.after), nrow=3, top=responses[i])
-  
-  ggsave(file.path(path_to_results, 'Figures', 'PercentChange', site_name, paste0(responses[i], "_3Models_prediction.png")), fig.fit.6, height=9, width=6, units='in')
-  
+
   
   
   #Quantile regression  
   quan.fig.before <- ggplot(data=plot.table.before) + 
-    geom_errorbar(aes(x=obs, ymin=quantile..0.25, ymax=quantile..0.75), col='grey40', alpha=.5) + 
+    geom_errorbar(aes(x=obs, ymin=quantile..0.15, ymax=quantile..0.85), col='grey40', alpha=.5) + 
     # geom_point(aes(x=obs, y=quantile..0.5)) +
     geom_point(aes(x=obs, y=mean), col='black') +
     # geom_errorbar(aes(x=obs, ymin=quantile..0.1, ymax=quantile..0.9)) + 
@@ -506,15 +531,15 @@ for (i in 1:(length(responses)-1)) {
     labs(y='random forest fit',
          x='observed value') +
     annotate("text", 
-             y= min(plot.table.before$quantile..0.25, na.rm=T), 
+             y= min(plot.table.before$quantile..0.15, na.rm=T), 
              x =max(plot.table.before$obs),
              label="before", hjust=1, size=4) +
-    annotate("text", y= max(plot.table.before$quantile..0.75),
+    annotate("text", y= max(plot.table.before$quantile..0.85),
              x =min(plot.table.before$obs),
              label=paste("variance explained =", quan.r2),hjust=0) 
   
   quan.fig.after <-  ggplot(data=plot.table.after) + 
-    geom_errorbar(aes(x=obs, ymin=quantile..0.25, ymax=quantile..0.75), col='grey40', alpha=.5) + 
+    geom_errorbar(aes(x=obs, ymin=quantile..0.15, ymax=quantile..0.85), col='grey40', alpha=.5) + 
     # geom_point(aes(x=obs, y=quantile..0.5)) +
     geom_point(aes(x=obs, y=mean), col='black') +
     
@@ -524,11 +549,11 @@ for (i in 1:(length(responses)-1)) {
     labs(y='random forest prediction',
          x='observed value') +
     annotate("text", 
-             y= min(plot.table.after$quantile..0.25, na.rm=T), 
+             y= min(plot.table.after$quantile..0.15, na.rm=T), 
              x =max(plot.table.after$obs),
              label="after", hjust=1, size=4) +
     annotate("text", 
-             y= max(plot.table.after$quantile..0.75, na.rm=T),
+             y= max(plot.table.after$quantile..0.85, na.rm=T),
              x=min(plot.table.after$obs),
              label=paste0("% change = ", round(per.change.table$fit[4], 2), " (", round(per.change.table$lwr[4], 2), " to ", round(per.change.table$upr[4], 2), ")"),
              hjust=0, col='#e41a1c', size=4) 
@@ -537,6 +562,12 @@ for (i in 1:(length(responses)-1)) {
   quan.fig.fit <- grid.arrange(grobs=list(quan.fig.before, quan.fig.after), nrow=1, top=responses[i])
   
   ggsave(file.path(path_to_results, 'Figures', 'PercentChange', site_name, paste0(responses[i], "_QuantileForest_prediction.png")), quan.fig.fit, height=3, width=6, units='in')
+  
+  
+  #Six panel figure with multi-linear, glm, and quantile regression
+  fig.fit.6 <- grid.arrange(grobs=list(mlm.fig.before, mlm.fig.after,  glm.fig.before, glm.fig.after, quan.fig.before, quan.fig.after), nrow=3, top=responses[i])
+  
+  ggsave(file.path(path_to_results, 'Figures', 'PercentChange', site_name, paste0(responses[i], "_3Models_prediction.png")), fig.fit.6, height=9, width=6, units='in')
   
   
   
@@ -632,5 +663,8 @@ per.change.allvars <- ggplot(per.change.tableout[per.change.tableout$model =='qu
   ggtitle(site_name) 
 
 ggsave(file=file.path(path_to_results, "Figures", "PercentChange", site_name, "Percent_change_allvars.png"), per.change.allvars, width=5, height=4, units='in')
+
+ggsave(file=file.path(path_to_results, "Figures", "PercentChange", "SiteSummaries", paste0(site_name, "_Percent_change_allvars.png")), per.change.allvars, width=5, height=4, units='in')
+
 
 }

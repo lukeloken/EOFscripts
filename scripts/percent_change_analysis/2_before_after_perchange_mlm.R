@@ -12,13 +12,27 @@
 #Calculate percent change (obs - pred)/obs
 #upper and lower bounds use confidence intervals from predict
 
-dat.mod.before <- filter(dat.mod, period == 'before')
-dat.mod.after <- filter(dat.mod, period == 'after')
+# dat.mod.before <- filter(dat.mod, period == 'before')
+# dat.mod.after <- filter(dat.mod, period == 'after')
+
+dat.mod.before <- filter(dat.mod.log10, period == 'before')
+dat.mod.after <- filter(dat.mod.log10, period == 'after')
+
 
 if (nrow(dat.mod.after)==0 | nrow(dat.mod.before)==0) {
+  message(paste0("No Pre/Post analysis for ", toString(site_name), ". Either pre/post data are missing."))
   next
-  warning(paste0("No Pre/Post analysis for ", toString(site_nu), ". Either pre/post data are missing."))
 }
+
+if (nrow(dat.mod.before) < 10) {
+  message(paste0("Fewer than 10 storm events in 'before' period for ", toString(site_name), " Skipping"))
+  next
+  }
+
+if (nrow(dat.mod.after) < 10) {
+  message(paste0("Fewer than 10 storm events in 'after' period for ", toString(site_name), " Skipping"))
+  next
+  }
 
 # save MDC as output from loop
 
@@ -32,19 +46,19 @@ perc.var <- c()
 ####################################
 # residual tests - was there a change after BMP implementation?
 # loop through responses to create equation and model
-i=1
+i=3
 for (i in 1:length(responses)) {
   
   mod.equation <- as.formula(paste(responses[i], paste(predictors.keep, collapse = " + "), sep = " ~ "))
   
-  mod <- randomForest(mod.equation, data = dat.mod, importance = T, na.action = na.omit)
+  mod <- randomForest(mod.equation, data = dat.mod.log10, importance = T, na.action = na.omit)
   #mod.before <- randomForest(mod.equation, data = dat.mod.before, importance = T, na.action = na.omit, ntree = 1000)
   
   perc.var[i] <- round(mod$rsq[500]*100, 1)
   
-  resid <- dat.mod[, responses[i]] - mod$predicted
+  resid <- dat.mod.log10[, responses[i]] - mod$predicted
   resid.test <- data.frame(resids = resid, 
-                           period = dat.mod$period)
+                           period = dat.mod.log10$period)
   
   #resid.test.after <- data.frame(resids = resid[dat$period == 'after'],
   #                               period = 'after')
@@ -164,7 +178,7 @@ modlist <- list()
 quanlist <- list()
 per.change.list <-list()
 
-i=2
+i=3
 for (i in 1:(length(responses)-1)) {
   
   if (pval.differences[i] > 0.1) {
@@ -284,11 +298,11 @@ for (i in 1:(length(responses)-1)) {
     bind_cols(sd = conditionalSd.after) %>%
     mutate(meanPlusSD = mean + sd,
            meanMinusSD = mean - sd,
-           perdiff.mean = (10^obs - 10^mean)/(10^obs),
-           perdiff.median = (10^obs - 10^quantile..0.5)/(10^obs))
+           perdiff.mean = (10^obs - 10^mean)/(10^obs + 10^mean)*200,
+           perdiff.median = (10^obs - 10^quantile..0.5)/(10^obs + 10^quantile..0.5)*200)
   
-  median(plot.table.after$perdiff.median)
-  mean(plot.table.after$perdiff.mean)
+  median_perdiff <- median(plot.table.after$perdiff.median)
+  mad_perdiff <- mad(plot.table.after$perdiff.median)
   
   #Convert to actual units and add up all rows
   quan.summary <- colSums(10^plot.table.after, na.rm=T)
@@ -309,7 +323,7 @@ for (i in 1:(length(responses)-1)) {
   mlm <- lm(mlm.equation, data = dat.mod)
   
   #subset model
-  mlm.step <- step(mlm, direction = 'both', k=3)
+  # mlm.step <- step(mlm, direction = 'both', k=3)
   
   #Models based on before/after data separately
   mlm.before <- lm(mlm.equation, data = dat.mod.before)
@@ -362,7 +376,7 @@ for (i in 1:(length(responses)-1)) {
   # make percent change table and merge with random/quntile forest predictions
   # ##################################################################
   
-  per.change.table <- data.frame(matrix(ncol=8, nrow=4))
+  per.change.table <- data.frame(matrix(ncol=8, nrow=5))
   names(per.change.table) <- names(mlm.summary)
   names(per.change.table)[1] <- c('model')
   names(per.change.table)[5] <- c('lwr2')
@@ -400,6 +414,11 @@ for (i in 1:(length(responses)-1)) {
   per.change.table$lwr[4] <- round((quan.summary['obs'] - quan.summary['mean']-quan.sd)/quan.summary['obs']*100)
   per.change.table$upr[4] <- round((quan.summary['obs'] - quan.summary['mean']+quan.sd)/quan.summary['obs']*100)
   
+  # Percent diff by storm event quanfile prediction
+  per.change.table$model[5] <- 'median_perdiff'
+  per.change.table$fit[5] <- median_perdiff
+  per.change.table$lwr[5] <- median_perdiff + mad_perdiff
+  per.change.table$upr[5] <- median_perdiff - mad_perdiff
   
   #Save models and percent change table
   per.change.list[[i]] <- per.change.table
@@ -523,7 +542,7 @@ for (i in 1:(length(responses)-1)) {
   #Quantile regression  
   quan.fig.before <- ggplot(data=plot.table.before) + 
     geom_errorbar(aes(x=obs, ymin=quantile..0.15, ymax=quantile..0.85), col='grey40', alpha=.5) + 
-    # geom_point(aes(x=obs, y=quantile..0.5)) +
+    geom_point(aes(x=obs, y=quantile..0.5), col='red') +
     geom_point(aes(x=obs, y=mean), col='black') +
     # geom_errorbar(aes(x=obs, ymin=quantile..0.1, ymax=quantile..0.9)) + 
     geom_abline() +
@@ -540,7 +559,7 @@ for (i in 1:(length(responses)-1)) {
   
   quan.fig.after <-  ggplot(data=plot.table.after) + 
     geom_errorbar(aes(x=obs, ymin=quantile..0.15, ymax=quantile..0.85), col='grey40', alpha=.5) + 
-    # geom_point(aes(x=obs, y=quantile..0.5)) +
+    geom_point(aes(x=obs, y=quantile..0.5), col='red') +
     geom_point(aes(x=obs, y=mean), col='black') +
     
     # geom_errorbar(aes(x=obs, ymin=quantile..0.1, ymax=quantile..0.9)) + 
@@ -635,11 +654,14 @@ if(length(per.change.list) ==0){
 
 per.change.tableout <-ldply(per.change.list, data.frame, .id = "variable") 
 
-otherresponses = data.frame(variable = responses[-which(responses %in% per.change.tableout$variable)]) %>%
+otherresponses_quan = data.frame(variable = responses[-which(responses %in% per.change.tableout$variable)]) %>%
   mutate(model = 'quan')
+otherresponses_medianperdiff = data.frame(variable = responses[-which(responses %in% per.change.tableout$variable)]) %>%
+  mutate(model = 'median_perdiff')
 
 per.change.tableout <- per.change.tableout %>%
-  full_join(otherresponses) %>%
+  full_join(otherresponses_quan, by=c('variable', 'model')) %>%
+  full_join(otherresponses_medianperdiff, by=c('variable', 'model')) %>%
   mutate(variable = factor(variable, responses)) 
 
 
@@ -664,7 +686,33 @@ per.change.allvars <- ggplot(per.change.tableout[per.change.tableout$model =='qu
 
 ggsave(file=file.path(path_to_results, "Figures", "PercentChange", site_name, "Percent_change_allvars.png"), per.change.allvars, width=5, height=4, units='in')
 
-ggsave(file=file.path(path_to_results, "Figures", "PercentChange", "SiteSummaries", paste0(site_name, "_Percent_change_allvars.png")), per.change.allvars, width=5, height=4, units='in')
+ggsave(file=file.path(path_to_results, "Figures", "PercentChange", "SiteSummaries", "TotalLoads_PercentChange", paste0(site_name, "_Percent_change_allvars.png")), per.change.allvars, width=5, height=4, units='in')
 
 
+median.per.change.allvars <- ggplot(per.change.tableout[per.change.tableout$model =='median_perdiff',], aes(x=variable)) + 
+  geom_hline(yintercept = 0, col='black', linetype='dashed') +
+  geom_errorbar(aes(ymin=lwr, ymax=upr), position=position_dodge(width=.5), width=.3) +
+  geom_point(aes(y=fit), position=position_dodge(width=.5), size=3, shape=18) +
+  theme_bw() +
+  labs(y='percent change') +
+  theme(axis.title.y=element_blank()) + 
+  coord_flip() +
+  theme(legend.position='bottom',
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  ggtitle(site_name) 
+
+ggsave(file=file.path(path_to_results, "Figures", "PercentChange", site_name, "Median_percent_change_allvars.png"), median.per.change.allvars, width=5, height=4, units='in')
+
+ggsave(file=file.path(path_to_results, "Figures", "PercentChange", "SiteSummaries", "IndividualLoad_PercentChange", paste0(site_name, "_Median_percent_change_allvars.png")), median.per.change.allvars, width=5, height=4, units='in')
+
+
+}
+
+
+Calculated_rows <- which(pval.differences < 0.1)
+if (length(Calculated_rows)>0) {
+  message(paste0('Percent change calculated for ', toString(responses[Calculated_rows])))
+} else {
+  message("No responses were found to be different at a p-value less than 0.1")
 }

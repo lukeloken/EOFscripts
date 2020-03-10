@@ -77,7 +77,7 @@ states <- c("IN", "MI", "WI", "OH", "NY")
 
 
 
-site_nu <- 17
+site_nu <- 15
 for (site_nu in 7:length(all_sites)){
   site_name <- all_sites[site_nu]
   print(site_name)
@@ -110,6 +110,9 @@ for (site_nu in 7:length(all_sites)){
       if (state == 'NY') {
         modvars_files <- "P:/0301/field_analysis/results/NY-SW4/2020-02-20-1027/cache/modvars.Rdata"
         warning(paste0("no modvars.Rdata file. Used NY-SW4 file for", toString(site_name)))
+      } else if (state == 'WI'){
+        modvars_files <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth/Data/modvars.Rdata"
+        warning(paste0("no modvars.Rdata file. Used WI-SW1 file for", toString(site_name)))
       } else {
       warning(paste("folder contains no `modvars.Rdata` file.", toString(file.path(path_to_data, "field_analysis", "results", site_name, recent_folder, "cache" ))))
     }

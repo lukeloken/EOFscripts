@@ -118,14 +118,15 @@ for (site_nu in 1:length(all_sites)){
     if (length(modvars_files) == 0){
       if (state == 'NY') {
         modvars_files <- "P:/0301/field_analysis/results/NY-SW4/2020-02-20-1027/cache/modvars.Rdata"
-        warning(paste0("no modvars.Rdata file. Used NY-SW4 file for", toString(site_name)))
+        message(paste0("no modvars.Rdata file. Used NY-SW4 file for", toString(site_name)))
       } else if (state == 'WI'){
         modvars_files <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth/Data/modvars.Rdata"
-        warning(paste0("no modvars.Rdata file. Used WI-SW1 file for", toString(site_name)))
+        message(paste0("no modvars.Rdata file. Used WI-SW1 file for", toString(site_name)))
       } else if (state %in% c('IN', 'MI', 'OH')){
         predictors <- intersect(predictors_all, names(dat))
+        message(paste0("no modvars.Rdata file. Used predictor list at top of script for ", toString(site_name)))
         } else {
-      warning(paste("folder contains no `modvars.Rdata` file.", toString(file.path(path_to_data, "field_analysis", "results", site_name, recent_folder, "cache" ))))
+      message(paste("folder contains no `modvars.Rdata` file.", toString(file.path(path_to_data, "field_analysis", "results", site_name, recent_folder, "cache" ))))
     }
       } else {
       if (length(modvars_files)>1){
@@ -163,7 +164,6 @@ if (length(modvars_files)>1){
     
     #Step 0
     source('scripts/percent_change_analysis/0_before_after_perchange_prep.R', echo = F)
-    
     
     
     #Step 1

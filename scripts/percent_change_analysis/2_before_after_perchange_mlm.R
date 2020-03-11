@@ -15,8 +15,8 @@
 # dat.mod.before <- filter(dat.mod, period == 'before')
 # dat.mod.after <- filter(dat.mod, period == 'after')
 
-dat.mod.before <- filter(dat.mod.log10, period == 'before')
-dat.mod.after <- filter(dat.mod.log10, period == 'after')
+dat.mod.before <- filter(dat.mod, period == 'before')
+dat.mod.after <- filter(dat.mod, period == 'after')
 
 
 if (nrow(dat.mod.after)==0 | nrow(dat.mod.before)==0) {
@@ -51,14 +51,14 @@ for (i in 1:length(responses)) {
   
   mod.equation <- as.formula(paste(responses[i], paste(predictors.keep, collapse = " + "), sep = " ~ "))
   
-  mod <- randomForest(mod.equation, data = dat.mod.log10, importance = T, na.action = na.omit)
+  mod <- randomForest(mod.equation, data = dat.mod, importance = T, na.action = na.omit)
   #mod.before <- randomForest(mod.equation, data = dat.mod.before, importance = T, na.action = na.omit, ntree = 1000)
   
   perc.var[i] <- round(mod$rsq[500]*100, 1)
   
-  resid <- dat.mod.log10[, responses[i]] - mod$predicted
+  resid <- dat.mod[, responses[i]] - mod$predicted
   resid.test <- data.frame(resids = resid, 
-                           period = dat.mod.log10$period)
+                           period = dat.mod$period)
   
   #resid.test.after <- data.frame(resids = resid[dat$period == 'after'],
   #                               period = 'after')

@@ -106,45 +106,48 @@ for (site_nu in 1:length(all_sites)){
       next
     }
     
-    # #Identify rundates files
-    # rundates <- as.Date(paste0(folders, "-01"), format="%Y-%m-%d")
-    # recent_folder <- folders[which.max(rundates)]
-    # 
-    # cache <- list.files(file.path(path_to_data, "field_analysis", "results", site_name, recent_folder, "cache" ), full.names=T)
-    # 
-    # modvars_files <- cache[grepl("modvars.Rdata" , cache)]
-    # 
-    # 
-    # if (length(modvars_files) == 0){
-    #   if (state == 'NY') {
-    #     modvars_files <- "P:/0301/field_analysis/results/NY-SW4/2020-02-20-1027/cache/modvars.Rdata"
-    #     warning(paste0("no modvars.Rdata file. Used NY-SW4 file for", toString(site_name)))
-    #   } else if (state == 'WI'){
-    #     modvars_files <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth/Data/modvars.Rdata"
-    #     warning(paste0("no modvars.Rdata file. Used WI-SW1 file for", toString(site_name)))
-    #   } else {
-    #   warning(paste("folder contains no `modvars.Rdata` file.", toString(file.path(path_to_data, "field_analysis", "results", site_name, recent_folder, "cache" ))))
-    # }
-    #   } else { 
-    #   if (length(modvars_files)>1){
-    #     
-    #     modvars_files <- modvars_files[which.min(nchar(modvars_files))]
-    #     modvars_name <- tail(unlist(strsplit(modvars_files[1], split='/')),1)
-    #     
-    #     warning(paste("More than 1 file listed with 'modvars.Rdata'. Used file with shortest name:", modvars_name, "    Check folder:",  toString(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "cache" ))))
-    #   } 
-    # }
-    # 
-    # 
-    # load(file = modvars_files)
-    # 
-    # 
-    # if(nrow(dat)==0) {
-    #   warning(paste0("Skipping folder ", toString(site_nu), ". Folder name does not match compiled data.frame site name. Check folder and site names"))
-    #   next
-    #   rm(responses, predictors)
-    # }
-    # 
+    #Identify rundates files
+    rundates <- as.Date(paste0(folders, "-01"), format="%Y-%m-%d")
+    recent_folder <- folders[which.max(rundates)]
+
+    cache <- list.files(file.path(path_to_data, "field_analysis", "results", site_name, recent_folder, "cache" ), full.names=T)
+
+    modvars_files <- cache[grepl("modvars.Rdata" , cache)]
+
+
+    if (length(modvars_files) == 0){
+      if (state == 'NY') {
+        modvars_files <- "P:/0301/field_analysis/results/NY-SW4/2020-02-20-1027/cache/modvars.Rdata"
+        warning(paste0("no modvars.Rdata file. Used NY-SW4 file for", toString(site_name)))
+      } else if (state == 'WI'){
+        modvars_files <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth/Data/modvars.Rdata"
+        warning(paste0("no modvars.Rdata file. Used WI-SW1 file for", toString(site_name)))
+      } else if (state %in% c('IN', 'MI', 'OH')){
+        predictors <- intersect(predictors_all, names(dat))
+        } else {
+      warning(paste("folder contains no `modvars.Rdata` file.", toString(file.path(path_to_data, "field_analysis", "results", site_name, recent_folder, "cache" ))))
+    }
+      } else {
+      if (length(modvars_files)>1){
+
+        modvars_files <- modvars_files[which.min(nchar(modvars_files))]
+        modvars_name <- tail(unlist(strsplit(modvars_files[1], split='/')),1)
+
+        warning(paste("More than 1 file listed with 'modvars.Rdata'. Used file with shortest name:", modvars_name, "    Check folder:",  toString(file.path(path_to_data, "analysis", state, folder, "results", recent_folder, "cache" ))))
+      }
+    }
+
+if (length(modvars_files)>1){
+    load(file = modvars_files)
+}
+    
+
+    if(nrow(dat)==0) {
+      warning(paste0("Skipping folder ", toString(site_nu), ". Folder name does not match compiled data.frame site name. Check folder and site names"))
+      next
+      rm(responses, predictors)
+    }
+
     responses <- responses_clean
     
     # if(site_name =='NY-SW4'){
@@ -152,7 +155,6 @@ for (site_nu in 1:length(all_sites)){
     #   next
     # }
     
-    predictors <- intersect(predictors_all, names(dat))
     # predictors_list[[(length(predictors_list)+1)]] <- predictors
     # names(predictors_list)[[(length(predictors_list))]] <- site_name
     

@@ -86,7 +86,7 @@ states <- c("IN", "MI", "WI", "OH", "NY")
 
 predictors_list <- list()
 
-site_nu <- 1
+site_nu <- 15
 for (site_nu in 1:length(all_sites)){
   site_name <- all_sites[site_nu]
   print(site_name)

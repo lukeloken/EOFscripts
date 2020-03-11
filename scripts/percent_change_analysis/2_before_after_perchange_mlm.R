@@ -76,8 +76,8 @@ for (i in 1:length(responses)) {
   pval.less[i] <- less.test$p.value
   pval.greater[i] <- greater.test$p.value
   
-  test.text <- ifelse(pval > 0.05, "No sig. differences between groups", "")
   
+  test.text <- ifelse(pval > 0.05, "No sig. differences between groups", "")
   top.vars <- pdp::topPredictors(mod, n = 4)
   
   # pdf(paste0('figures/', site, '_rf_pp_', responses[i], '.pdf'), heigh = 6, width = 6)
@@ -138,7 +138,7 @@ for (i in 1:length(responses)) {
 }
 
 # create a dataframe describing the residual models
-before_after_resid <- data.frame(variable = responses,
+before_after_resid <- data.frame(variable = clean_names,
                                  perc_var = perc.var,
                                  pvals = round(pval.differences, 2),
                                  pvals_reduction = round(pval.less, 2),
@@ -181,7 +181,7 @@ per.change.list <-list()
 i=3
 for (i in 1:(length(responses)-1)) {
   
-  if (pval.differences[i] > 0.1) {
+  if (pval.differences[i] > 0.15) {
     before.fit[i] <- NA
     after.fit[i] <- NA
     pvals.ba[i] <- NA
@@ -710,9 +710,9 @@ ggsave(file=file.path(path_to_results, "Figures", "PercentChange", "SiteSummarie
 }
 
 
-Calculated_rows <- which(pval.differences < 0.1)
+Calculated_rows <- which(pval.differences < 0.15)
 if (length(Calculated_rows)>0) {
   message(paste0('Percent change calculated for ', toString(responses[Calculated_rows])))
 } else {
-  message("No responses were found to be different at a p-value less than 0.1")
+  message("No responses were found to be different at a p-value less than 0.15")
 }

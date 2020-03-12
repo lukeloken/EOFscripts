@@ -41,7 +41,8 @@ concvars <- c('suspended_sediment_conc_mgL',
               'total_nitrogen_conc_mgL',
               'organic_nitrogen_conc_mgL',
               'toc_conc_mgL',
-              'doc_conc_mgL')
+              'doc_conc_mgL',
+              'runoff_cubicmeter_percubicmeterWEQ')
 
 #Identify rain variables
 rainvars <-c("rain", "duration", "Ievent", "I5", "I10", "I15", "I30", "I60",
@@ -318,3 +319,85 @@ for (site_i in 1:length(EOF_sites)){
   ggsave(file_out(file.path(path_to_results, "Figures", "Boxplots_bySite", paste0(EOF_sites[site_i], "_ByYear_boxplot.png"))), ConcByYear_boxlist_bysite[[site_i]], height=8, width=12, units = 'in', dpi=320)
   
 }
+
+
+
+# boxplot of select variables for SIRs 
+selectvars <- c(concvars[c(1,6:7, 3:4,8)],
+                'rain', 'weq', 'erosivity_m2',
+                'runoff_cubicmeter_percubicmeterWEQ', 'runoff_volume', 'peak_discharge')
+# c(loadvars, concvars, rainvars)
+selectnames <- c("Suspended sediments (mg/L)", "SRP (mg P/L)", "TP (mg P/L)",
+                 "NO2 NO3 (mg N/L)", "NH4 (mg N/L)", "TN (mg N/L)",
+                 "Rain (in)", "WEQ (in)", "Erosivity (m2)",
+                 'Runoff index', 'Runoff volume (cf)', 'Peak discharge (cfs)')
+
+ConcByYear_boxlist_bysite_select<-list()
+ConcByYear_boxlist_bysite_select_nonfrozen <- list()
+site_i <- 15
+for (site_i in 1:length(EOF_sites)){
+  
+  data_i <- filter(data_df3, site==EOF_sites[site_i]) %>%
+    dplyr::select("wateryear", "period", "frozen", selectvars) %>%
+    gather(key=variable, value=value, 4:(3+length(selectvars))) %>%
+    mutate(variable = factor(variable, selectvars)) %>%
+    mutate(name = selectnames[match(variable, selectvars)]) %>%
+    mutate(name = factor(name, selectnames),
+           period = factor(period, c('before', 'after'))) #%>%
+    # mutate(wateryear = as.numeric(as.character(wateryear)))
+  
+  line_date = group_by(data_i, period) %>%
+    summarize(minyear = min(as.numeric(as.character(wateryear))),
+              maxyear = max(as.numeric(as.character(wateryear))))
+  
+  ConcByYear_boxlist_bysite_select[[site_i]] <- ggplot(data=data_i, aes_string(x="wateryear", y="value", color="period", fill="period")) +
+    scale_y_log10() +
+    # geom_point(position=position_jitterdodge(),  width = 1) + 
+    geom_point(position=position_jitterdodge(), size=1, alpha=.5, shape=16) +
+    # geom_jitter(width = .1, size=1, alpha=.5, shape=16) +
+    geom_boxplot(aes(fill=period), alpha=0.2, outlier.shape = NA) +
+    # scale_shape_manual(values=c(16, 1))+
+    # stat_smooth(method = "lm", se=T, alpha=.1) +
+    facet_wrap(~name, scales='free_y', nrow=4) +
+    theme_bw() +
+    theme(legend.position = 'bottom') +
+    guides(color = guide_legend(nrow = 1)) +
+    labs(x = "Water year") +
+    theme(axis.text=element_text(size=8),
+          axis.title.y=element_blank(),
+          legend.title=element_blank()) +
+    ggtitle(paste0(EOF_sites[site_i],  ': All runoff events')) +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  print(ConcByYear_boxlist_bysite_select[[site_i]])
+  
+  ggsave(file_out(file.path(path_to_results, "Figures", "Boxplots_bySite_SelectVars", paste0(EOF_sites[site_i], "_ByYear_boxplot.png"))), ConcByYear_boxlist_bysite_select[[site_i]], height=8, width=8, units = 'in', dpi=320)
+ 
+  
+  ConcByYear_boxlist_bysite_select_nonfrozen[[site_i]] <- ggplot(data=data_i[which(data_i$frozen==FALSE),], aes_string(x="wateryear", y="value", color="period", fill="period")) +
+    scale_y_log10() +
+    # geom_point(position=position_jitterdodge(),  width = 1) + 
+    geom_point(position=position_jitterdodge(), size=1, alpha=.5, shape=16) +
+    # geom_jitter(width = .1, size=1, alpha=.5, shape=16) +
+    geom_boxplot(aes(fill=period), alpha=0.2, outlier.shape = NA) +
+    # scale_shape_manual(values=c(16, 1))+
+    # stat_smooth(method = "lm", se=T, alpha=.1) +
+    facet_wrap(~name, scales='free_y', nrow=4) +
+    theme_bw() +
+    theme(legend.position = 'bottom') +
+    guides(color = guide_legend(nrow = 1)) +
+    labs(x = "Water year") +
+    theme(axis.text=element_text(size=8),
+          axis.title.y=element_blank(),
+          legend.title=element_blank()) +
+    ggtitle(paste0(EOF_sites[site_i],  ': Non-frozen runoff events')) +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  print(ConcByYear_boxlist_bysite_select_nonfrozen[[site_i]])
+  
+  ggsave(file_out(file.path(path_to_results, "Figures", "Boxplots_bySite_SelectVars", paste0(EOF_sites[site_i], "_ByYear_NonFrozen_boxplot.png"))), ConcByYear_boxlist_bysite_select_nonfrozen[[site_i]], height=8, width=8, units = 'in', dpi=320)
+  
+  
+}
+
+

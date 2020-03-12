@@ -41,14 +41,16 @@ clean_names <- c('SS load (pounds)', 'Chloride load (pounds)',
                  'NO2 + NO3 load (pounds)', 'Ammonium load (pounds)',
                  'TKN load (pounds)', 'Orthophosphate load (pounds)',
                  'TP load (pounds)', 'TN load (pounds)',
-                 'Org N load (pounds)', 'Peak discharge (cfs)', 'Volume (cf)')
+                 'Org N load (pounds)', 'Peak discharge (cfs)', 
+                 'Volume (cf)', 'Runoff Index')
 
 #These are the response names in the merged data file. 
 responses_clean <- c("suspended_sediment_load_pounds", "chloride_load_pounds",
                      "no2_no3n_load_pounds", "ammonium_n_load_pounds",
                      "tkn_unfiltered_load_pounds", "orthophosphate_load_pounds",
                      "tp_unfiltered_load_pounds", "total_nitrogen_load_pounds", 
-                     "organic_nitrogen_load_pounds", "peak_discharge", "runoff_volume") 
+                     "organic_nitrogen_load_pounds", "peak_discharge", 
+                     "runoff_volume", "runoff_cubicmeter_percubicmeterWEQ") 
 
 predictors_all <- c("weq" , "duration", "Ievent", "I5", "I10", "I15", "I30", "I60",          
                     "energy_m1", "erosivity_m1", "energy_m2", "erosivity_m2", 
@@ -63,6 +65,11 @@ predictors_all <- c("weq" , "duration", "Ievent", "I5", "I10", "I15", "I30", "I6
 #This data is the output from the compilation script
 #Rather could use the 'mod' file in each site sub-folder
 data_df <- readRDS(file=(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_model_data.rds" ))))
+
+#This data includes concentration, yields per rain, and runoff index
+data_df <- readRDS(file=(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_conc_allsites_model.rds" ))))
+
+
 
 all_sites <- as.character(unique(data_df$site))
 

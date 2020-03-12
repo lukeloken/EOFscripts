@@ -95,10 +95,14 @@ for (site_nu in 1:length(all_sites)){
   
   folders<-list.files(file.path(path_to_data, "field_analysis", "results", site_name))
   
-      #Subset to only one site and drop all columns with NAs
+      #Subset to only one site and drop all columns with NAs or infinite
     dat <- filter(data_df, site == site_name) %>%
-      select_if(not_all_na)
+      select_if(not_all_na) %>%
+      select_if(function(x) {all(!is.infinite(x))})
   
+    #For testing can load site file for WI-SW1 for comparison.
+    # dat <- read.csv("P:/0301/field_analysis/results/WI-SW1/2020-03-06-1203/tables/WI-SW1_mod_dat.csv")
+    
   # dat <- filter(data_df, site == site_name) 
     
     if (nrow(dat)==0){
@@ -176,7 +180,7 @@ if (length(modvars_files)>1){
     #Predict 'after' data and compare to observations
     #Use model coefficient standard error to include confidence intervals in prediction
     #output a summary table, model list, and set of figures
-    source('scripts/percent_change_analysis/2_before_after_perchange_mlm.R', echo = F)
+    source('scripts/percent_change_analysis/2_before_after_perchange_mlm_v2.R', echo = F)
     
     per.change.tableout
     # temp_filename <- file.path('data_cached', paste0(site_nu, '_percent_reduction_before_after_mlm.csv'))

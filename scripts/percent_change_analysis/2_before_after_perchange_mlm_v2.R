@@ -435,7 +435,7 @@ ggsave(file=file.path(path_to_results, "Figures", "PercentChange", "SiteSummarie
 }
 
 
-Calculated_rows <- which(pval.differences < 0.15)
+Calculated_rows <- which(pval.differences < 0.1)
 if (length(Calculated_rows)>0) {
   message(paste0('Percent change calculated for ', toString(responses[Calculated_rows])))
 } else {

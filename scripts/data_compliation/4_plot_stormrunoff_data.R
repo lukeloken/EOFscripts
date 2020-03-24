@@ -57,7 +57,6 @@ EOF_sites <- unique(data_df3$site)
 #########################################
 
 
-
 LoadByRunnoff_plotlist <- list()
 
 var_i <- 11
@@ -149,6 +148,45 @@ for (var_i in 1:length(rainvars)){
   ggsave(file_out(file.path(path_to_results, "Figures", "Rain", paste0(rainvars[var_i], "ByRunoff_plot.png"))), RainByRunnoff_plotlist[[var_i]], height=8, width=12, units = 'in', dpi=320)
   
 }
+
+
+RainByRunnoff_plotlist_v2 <- list()
+
+var_i <- 13
+for (var_i in 1:length(rainvars)){
+  
+  RainByRunnoff_plotlist_v2[[var_i]] <- ggplot(data=data_df3[which(data_df3$rain <5 & data_df3$frozen ==FALSE),], aes_string(y="sum_runoff", x=rainvars[var_i], group="wateryear", color="wateryear", fill="wateryear")) +
+    # scale_x_log10() +
+    # scale_y_log10() +
+    geom_point(aes(shape=frozen), size=2) +
+    scale_shape_manual(values=c(16, 1))+
+    stat_smooth(method = "lm", se=F, alpha=.1) +
+    facet_wrap(~site, scales='free') +
+    theme_bw() +
+    theme(legend.position = 'bottom') +
+    guides(color = guide_legend(nrow = 1)) +
+    labs(y = "Runoff volume (cubic feet per storm)")
+  
+  print(RainByRunnoff_plotlist_v2[[var_i]])
+  
+  ggsave(file_out(file.path(path_to_results, "Figures", "Rain", paste0(rainvars[var_i], "ByRunoff_plot_v2.png"))), RainByRunnoff_plotlist_v2[[var_i]], height=8, width=12, units = 'in', dpi=320)
+  
+}
+
+RainByRunnoffIndex <- ggplot(data=data_df3[which(data_df3$rain <5 & data_df3$frozen ==FALSE & data_df3$runoff_cubicmeter_percubicmeterWEQ <1 ),], aes_string(y="runoff_cubicmeter_percubicmeterWEQ", x="weq", group="wateryear", color="wateryear", fill="wateryear")) +
+  # scale_x_log10() +
+  # scale_y_log10() +
+  geom_point(aes(shape=frozen), size=2) +
+  scale_shape_manual(values=c(16, 1))+
+  stat_smooth(method = "lm", se=F, alpha=.1) +
+  facet_wrap(~site, scales='free') +
+  theme_bw() +
+  theme(legend.position = 'bottom') +
+  guides(color = guide_legend(nrow = 1)) +
+  labs(y = "Runoff index")
+
+print(RainByRunnoffIndex)
+
 
 #############
 # Boxplots
@@ -352,6 +390,9 @@ for (site_i in 1:length(EOF_sites)){
   
   ConcByYear_boxlist_bysite_select[[site_i]] <- ggplot(data=data_i, aes_string(x="wateryear", y="value", color="period", fill="period")) +
     scale_y_log10() +
+    scale_color_brewer(type='qual', palette=2) + 
+    scale_fill_brewer(type='qual', palette=2) + 
+    
     # geom_point(position=position_jitterdodge(),  width = 1) + 
     geom_point(position=position_jitterdodge(), size=1, alpha=.5, shape=16) +
     # geom_jitter(width = .1, size=1, alpha=.5, shape=16) +
@@ -377,6 +418,8 @@ for (site_i in 1:length(EOF_sites)){
   ConcByYear_boxlist_bysite_select_nonfrozen[[site_i]] <- ggplot(data=data_i[which(data_i$frozen==FALSE),], aes_string(x="wateryear", y="value", color="period", fill="period")) +
     scale_y_log10() +
     # geom_point(position=position_jitterdodge(),  width = 1) + 
+    scale_color_brewer(type='qual', palette=2) + 
+    scale_fill_brewer(type='qual', palette=2) + 
     geom_point(position=position_jitterdodge(), size=1, alpha=.5, shape=16) +
     # geom_jitter(width = .1, size=1, alpha=.5, shape=16) +
     geom_boxplot(aes(fill=period), alpha=0.2, outlier.shape = NA) +

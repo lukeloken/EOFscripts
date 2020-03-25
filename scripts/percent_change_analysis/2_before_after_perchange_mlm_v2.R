@@ -52,13 +52,14 @@ perc.var <- c()
 # residual tests - was there a change after BMP implementation?
 # Copy and paste from prior data_anaylsis script
 # loop through responses to create equation and model
-i=1
+i=11
 for (i in 1:length(responses)) {
   
   mod.equation <- as.formula(paste(responses[i], paste(predictors.keep, collapse = " + "), sep = " ~ "))
   
   mod <- randomForest(mod.equation, data = dat.mod, importance = T, na.action = na.omit, ntree=1000)
   #mod.before <- randomForest(mod.equation, data = dat.mod.before, importance = T, na.action = na.omit, ntree = 1000)
+  print(randomForest::varImpPlot(mod))
   
   perc.var[i] <- round(mod$rsq[500]*100, 1)
   
@@ -407,14 +408,19 @@ otherresponses_medianperdiff = data.frame(variable = responses[-which(responses 
 
 per.change.tableout <- per.change.tableout %>%
   full_join(otherresponses_medianperdiff, by=c('variable', 'model')) %>%
-  mutate(variable = factor(variable, responses)) 
+  mutate(variable = factor(variable, rev(responses))) 
+
+per.change.tableout$name <- c(clean_names, other_names)[match(per.change.tableout$variable, c(responses_clean, other_responses))]
+
+per.change.tableout$name <- factor(per.change.tableout$name, rev(c(clean_names, other_names)))
 
 per.change.table.plot <- per.change.tableout %>%
   group_by(variable, value=model) %>%
   tidyr::gather(metric, value, 3:5) 
 
 
-median.per.change.allvars <- ggplot(per.change.tableout[per.change.tableout$model =='median_perdiff',], aes(x=variable)) + 
+
+median.per.change.allvars <- ggplot(per.change.tableout[per.change.tableout$model =='median_perdiff',], aes(x=name)) + 
   geom_hline(yintercept = 0, col='black', linetype='dashed') +
   geom_errorbar(aes(ymin=lwr, ymax=upr), position=position_dodge(width=.5), width=.3) +
   geom_point(aes(y=fit), position=position_dodge(width=.5), size=3, shape=18) +
@@ -427,9 +433,9 @@ median.per.change.allvars <- ggplot(per.change.tableout[per.change.tableout$mode
         panel.grid.minor = element_blank()) +
   ggtitle(site_name) 
 
-ggsave(file=file.path(path_to_results, "Figures", "PercentChange", site_name, "Median_percent_change_allvars.png"), median.per.change.allvars, width=5, height=4, units='in')
+ggsave(file=file.path(path_to_results, "Figures", "PercentChange", site_name, "Median_percent_change_allvars.png"), median.per.change.allvars, width=5, height=5, units='in')
 
-ggsave(file=file.path(path_to_results, "Figures", "PercentChange", "SiteSummaries", "IndividualLoad_PercentChange", paste0(site_name, "_Median_percent_change_allvars.png")), median.per.change.allvars, width=5, height=4, units='in')
+ggsave(file=file.path(path_to_results, "Figures", "PercentChange", "SiteSummaries", "IndividualLoad_PercentChange", paste0(site_name, "_Median_percent_change_allvars.png")), median.per.change.allvars, width=5.5, height=5, units='in')
 
 
 }

@@ -44,6 +44,17 @@ clean_names <- c('SS load (pounds)', 'Chloride load (pounds)',
                  'Org N load (pounds)', 'Peak discharge (cfs)', 
                  'Volume (cf)', 'Runoff Index')
 
+other_names <- c("SS (mg/L)", "Chloride (mg/L)",
+                     "NO2 + NO3 conc (mg N/L)", "Ammonium conc (mg N/L)",
+                     "TKN conc (mg N/L)", "Orthophosphate conc (mg P/L)",
+                     "TP conc (mg P/L)", " TN conc (mg N/L)", 
+                     "Org N conc (mg N/L)",
+                     "Runoff volume yield (cf/acre)", "SS yield (pound/acre/inch)", 
+                     "Chloride yield (pound/acre/inch)", "NO2 + NO3 yield (pound/acre/inch)",
+                     "Ammonium yield (pound/acre/inch)", "TKN yield (pound/acre/inch)",
+                     "Orthophosphate yield (pound/acre/inch)", "TP yield (pound/acre/inch)",
+                     "TN yield (pound/acre/inch)", "Org N yield (pound/acre/inch)")
+
 #These are the response names in the merged data file. 
 responses_clean <- c("suspended_sediment_load_pounds", "chloride_load_pounds",
                      "no2_no3n_load_pounds", "ammonium_n_load_pounds",
@@ -51,6 +62,17 @@ responses_clean <- c("suspended_sediment_load_pounds", "chloride_load_pounds",
                      "tp_unfiltered_load_pounds", "total_nitrogen_load_pounds", 
                      "organic_nitrogen_load_pounds", "peak_discharge", 
                      "runoff_volume", "runoff_cubicmeter_percubicmeterWEQ") 
+
+other_responses <- c("suspended_sediment_conc_mgL", "chloride_conc_mgL",
+                     "no2_no3n_conc_mgL", "ammonium_n_conc_mgL",
+                     "tkn_unfiltered_conc_mgL", "orthophosphate_conc_mgL",
+                     "tp_unfiltered_conc_mgL", "total_nitrogen_conc_mgL", 
+                     "organic_nitrogen_conc_mgL",
+                     "runoff_volume_cubicfootperAcre", "suspended_sediment_yield_poundperAcreperInchWEQ", 
+                     "chloride_yield_poundperAcreperInchWEQ", "no2_no3n_yield_poundperAcreperInchWEQ",
+                     "ammonium_n_yield_poundperAcreperInchWEQ", "tkn_unfiltered_yield_poundperAcreperInchWEQ",
+                     "orthophosphate_yield_poundperAcreperInchWEQ", "tp_unfiltered_yield_poundperAcreperInchWEQ",
+                     "total_nitrogen_yield_poundperAcreperInchWEQ", "organic_nitrogen_yield_poundperAcreperInchWEQ") 
 
 predictors_all <- c("weq" , "duration", "Ievent", "I5", "I10", "I15", "I30", "I60",          
                     "energy_m1", "erosivity_m1", "energy_m2", "erosivity_m2", 
@@ -107,6 +129,8 @@ for (site_nu in 1:length(all_sites)){
       select_if(not_all_na) %>%
       select_if(function(x) {all(!is.infinite(x))})
   
+    dat <- filter(dat, storm_middate>start_date & storm_middate<end_date)
+    
     #For testing can load site file for WI-SW1 for comparison.
     # dat <- read.csv("P:/0301/field_analysis/results/WI-SW1/2020-03-06-1203/tables/WI-SW1_mod_dat.csv")
     
@@ -160,7 +184,12 @@ if (length(modvars_files)>1){
       rm(responses, predictors)
     }
 
+    #Load variable responses
     responses <- responses_clean
+    
+    #concentration, yield, and other responses
+    responses <- c(responses_clean, other_responses)
+    
     
     # if(site_name =='NY-SW4'){
     #   warning("skipping site NY-SW4. predictor vars not correct")

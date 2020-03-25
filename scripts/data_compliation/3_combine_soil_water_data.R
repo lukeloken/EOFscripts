@@ -24,7 +24,7 @@ data_merge <- data_df3 %>%
   filter(wateryear %in% c(2016:2017), frozen == 0) %>%
   # filter(wateryear == unique(soil_0_15$wateryear), frozen == 0) %>%
   rename(Site = site) %>%
-  dplyr::select(wateryear, Site, wq_vars, peak_discharge, runoff_volume, rain) %>%
+  dplyr::select(wateryear, Site, wq_vars, peak_discharge, rain) %>%
   group_by(Site) %>%
   summarize_at(wq_vars, .funs=median, na.rm=T) %>%
   left_join(soil_0_15) %>%
@@ -130,6 +130,9 @@ for (wq_var in 1:length(choice_yields)) {
 }
 
 
+names(glm_list_yield)<-choice_yields
+
+
 #Similar figures for concentration
 wq_var<-1
 plot_list_conc <-list()
@@ -183,6 +186,8 @@ for (wq_var in 1:length(choice_conc)) {
   
 }
 
+names(glm_list_conc)<-choice_conc
+
 wq_var <-1
 fig_list <- list()
 for (wq_var in 1:length(choice_conc)) {
@@ -200,37 +205,5 @@ ggsave(file=file_out(file.path(path_to_results, 'Figures', 'Soil', 'SoilWQ_Scatt
 
 
 
-
-
-
-
-Manure_temp2 <- factor(data_merge$Manure, c('Manure', "No Manure"))
-Manure_temp2 <- as.numeric(Manure_temp2)
-Manure_temp2[which(Manure_temp2 == 2)] <- 0
-data_merge$Manure_binary <- Manure_temp2
-
-
-merge_pca_df <- data_merge[colSums(!is.na(data_merge)) > 0] %>%
-  group_by() %>%
-  na.omit()
-
-#For big analysis remove rows with any NAs
-merge_pca_df<-na.omit(merge_pca_df)
-merge_pca_df2 <- dplyr::select(merge_pca_df, -wateryear, -Site, -Manure, -Depth, -Date)
-
-#Make PCAs
-merge_pca <- prcomp(merge_pca_df2, center = TRUE, scale. = TRUE, rank=6) 
-
-rownames(merge_pca_df) <- merge_pca_df$Site
-
-
-chart.Correlation(merge_pca_df2, histogram=TRUE, pch=19)
-
-corrplot(merge_pca$rotation, is.corr=FALSE, mar=c(0,0,0,1.5), oma=c(0,0,0,0), tl.col='black', cl.pos='r', cl.ratio=0.5, col=brewer.pal(10, 'RdYlBu'), cl.lim=corrange)
-
-
-res <- cor(merge_pca_df2)
-round(res, 2)
-
-corrplot(res, type='upper', cl.lim=c(-1, 1))
-
+summary(glm_list_yield$tp_unfiltered_yield_poundperAcreperInchWEQ)
+plot(, predict(glm_list_yield$tp_unfiltered_yield_poundperAcreperInchWEQ$BestModel)

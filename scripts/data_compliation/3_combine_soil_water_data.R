@@ -206,4 +206,8 @@ ggsave(file=file_out(file.path(path_to_results, 'Figures', 'Soil', 'SoilWQ_Scatt
 
 
 summary(glm_list_yield$tp_unfiltered_yield_poundperAcreperInchWEQ)
-plot(, predict(glm_list_yield$tp_unfiltered_yield_poundperAcreperInchWEQ$BestModel)
+plot(glm_list_yield$tp_unfiltered_yield_poundperAcreperInchWEQ$BestModel$model$y, 
+     glm_list_yield$tp_unfiltered_yield_poundperAcreperInchWEQ$BestModel$fitted.values,
+     xlab='observations', ylab='predictions', main='tp_unfiltered_yield_poundperAcreperInchWEQ')
+
+

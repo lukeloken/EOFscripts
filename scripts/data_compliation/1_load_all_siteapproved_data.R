@@ -3,8 +3,6 @@
 
 library(anytime)
 
-`%notin%` <- Negate(`%in%`)
-
 #This is where the data live
 print(path_to_data)
 

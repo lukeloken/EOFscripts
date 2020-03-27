@@ -3,6 +3,8 @@
 
 library(anytime)
 
+`%notin%` <- Negate(`%in%`)
+
 #This is where the data live
 print(path_to_data)
 
@@ -50,6 +52,14 @@ for (file_nu in 1:length(approved_files)){
         #remove rows that are entirely NA
         data_i[as.logical((rowSums(is.na(data_i))-ncol(data_i))),]
         
+        if ('storm_runoff_cubic_feet' %in% names(data_i)){
+            data_i <- dplyr::mutate(data_i, runoff_volume = storm_runoff_cubic_feet) %>%
+              select(-storm_runoff_cubic_feet)
+        
+        }
+        
+        data_i <- mutate(data_i, runoff_volume = as.numeric(runoff_volume))
+        
         # data_i <- read.csv(path_to_sitefile, stringsAsFactors = F, header=T) %>%
         #   mutate(sample_start = as.POSIXct(sample_start, tz=state_tz, format='%m/%d/%Y %H:%M'),
         #          sample_end = as.POSIXct(sample_end, tz=state_tz, format='%m/%d/%Y %H:%M'),
@@ -86,10 +96,10 @@ badcolumns <- setdiff(loadcolumns, goodcolumns)
 badnames<- names(data_df)[badcolumns]
 
 #Combine columns that are runoff
-runoffcolumns <- which(grepl("runoff", names(data_df), ignore.case=T))
-names(data_df)[runoffcolumns]
-
-data_df$runoff_volume[which(is.na(data_df$runoff_volume))] <- data_df$storm_runoff_cubic_feet[which(is.na(data_df$runoff_volume))]
+# runoffcolumns <- which(grepl("runoff", names(data_df), ignore.case=T))
+# names(data_df)[runoffcolumns]
+# 
+# data_df$runoff_volume[which(is.na(data_df$runoff_volume))] <- data_df$storm_runoff_cubic_feet[which(is.na(data_df$runoff_volume))]
 
 # head(data_df)
 # str(data_df)
@@ -128,7 +138,7 @@ for (var in 1:length(badnames)){
     }
 
 data_df <- data_df %>%
-  dplyr::select(-badnames, -storm_runoff_cubic_feet)
+  dplyr::select(-badnames)
 
 
 

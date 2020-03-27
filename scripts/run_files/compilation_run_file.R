@@ -8,6 +8,9 @@ source('scripts/functions/g_legend.R')
 source('scripts/functions/not_all_na.R')
 source('scripts/functions/ScaleYLog10Nice.R')
 
+`%notin%` <- Negate(`%in%`)
+
+
 #compile site approved data
 #These data contain estimated loads
 source('scripts/data_compliation/1_load_all_siteapproved_data.R')

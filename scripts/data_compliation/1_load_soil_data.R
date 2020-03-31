@@ -27,6 +27,10 @@ soil_df <- full_join(soil_dates, soil_df)
 
 soil_df$Site <- gsub("-0", "-SW", soil_df$Site)
 
+#All Wisconsin and New York sites had Manure at one point in time
+soil_df$Manure[(soil_df$Site %in% c("WI-SW1", "WI-SW2", "WI-SW3", "WI-SW4", "WI-SW5", 
+                                    "NY-SW1", "NY-SW2", "NY-SW3", "NY-SW4"))] <- "Manure"
+
 
 #subset fall data
 soil_fall <- filter(soil_df, Type=='Fall') %>%

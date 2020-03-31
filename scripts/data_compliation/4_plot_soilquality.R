@@ -35,7 +35,7 @@ for (i in 1:length(soilvars)){
   
   soil_box_list[[i]] <- ggplot(data=soil_df3, 
                                aes_string(x="Manure", y=soilvars[i], fill='Depth', col='Depth')) +
-    geom_point(position=position_jitterdodge(jitter.width=.1, jitter.height=0), alpha=.5) + 
+    geom_point(position=position_jitterdodge(dodge.width=.5), alpha=.5) + 
     geom_boxplot(alpha=.3, width=.5, outlier.shape = NA) +
     theme_bw() +
     theme(axis.title.x = element_blank(), legend.position='none') 
@@ -91,7 +91,7 @@ dev.off()
 
 
 ###################################
-#Copy and paste from old code
+#Mostly copy and paste from old code
 #PCA
 # ##################################
 

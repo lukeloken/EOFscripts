@@ -75,11 +75,17 @@ choice_conc <- concvars[1:9]
 
 choice_soil <-  soil_vars[c(1:3,4:6,7:18, 19:23, 25:30)]
 
+predictors.cor <- cor(data_merge[,choice_soil], use = 'complete.obs') 
+names.cor <- row.names(predictors.cor)
+drop.predictors <- caret::findCorrelation(predictors.cor, cutoff = 0.95, verbose = FALSE, exact = TRUE)
+predictors.keep <- c(names.cor[-drop.predictors], 'Manure')
 
 
 wq_var<-1
 plot_list_yield <-list()
 glm_list_yield <- list()
+model_fig_yield <- list()
+model_data_yield <- list()
 for (wq_var in 1:length(choice_yields)) {
 
   var_list <- list()
@@ -90,10 +96,15 @@ for (wq_var in 1:length(choice_yields)) {
     pvalue <- summary(lm_model)$coefficients[2,4]
     
     var_list[[soil_var]] <- ggplot(data=data_merge, aes_string(x=choice_soil[soil_var], y=choice_yields[wq_var])) +
-      geom_point(aes(color=Manure), size=2)  +
+      geom_point(aes(color=Manure), size=2, shape=1)  +
       theme_bw() +
       theme(legend.position = 'none',
             axis.title.y = element_blank())
+    
+    if (choice_soil[soil_var] %in% predictors.keep) {
+      var_list[[soil_var]] <- var_list[[soil_var]] +
+        geom_point(aes(color=Manure), size=2, shape=16)
+    }
     
     if (pvalue <=0.1 & pvalue > 0.05) {
       var_list[[soil_var]] <- var_list[[soil_var]] +
@@ -118,7 +129,12 @@ for (wq_var in 1:length(choice_yields)) {
   ggsave(file=file_out(file.path(path_to_results, 'Figures', 'Soil', 'SoilWQ_Scatter', paste(choice_yields[wq_var], ".png"))) , plot_list_yield[[wq_var]], height=8, width=8)
     
 
-  data.glm <- data_merge[c(choice_soil, choice_yields[wq_var])] %>%
+  # data.glm <- data_merge[c(choice_soil, choice_yields[wq_var])] %>%
+  #   select_if(~ !any(is.na(.))) %>%
+  #   data.frame()
+  
+  data.glm <- data_merge[c(predictors.keep, choice_yields[wq_var])] %>%
+    mutate(Manure = factor(Manure, levels=c('No Manure', "Manure"))) %>%
     select_if(~ !any(is.na(.))) %>%
     data.frame()
 
@@ -126,17 +142,33 @@ for (wq_var in 1:length(choice_yields)) {
   print(choice_yields[wq_var])
   glm_list_yield[[wq_var]]
   summary(glm_list_yield[[wq_var]])
-  
+
+  model_data_yield[[wq_var]] <- data.frame(obs =glm_list_yield[[wq_var]]$BestModel$model$y,
+                           pred=glm_list_yield[[wq_var]]$BestModel$fitted.values)
+
+  model_fig_yield[[wq_var]] <- ggplot(data=model_data_yield[[wq_var]], aes(x=obs,
+                                                                   y=pred)) + 
+    geom_point() +  
+    ggtitle(choice_yields[wq_var]) + 
+    labs(x = 'observations', y='predictions' ) + 
+    geom_abline() + 
+    theme_bw()
+
+  print(model_fig_yield[[wq_var]])
+    
 }
 
 
 names(glm_list_yield)<-choice_yields
-
+glm_list_yield
+print(model_fig_yield)
 
 #Similar figures for concentration
 wq_var<-1
 plot_list_conc <-list()
 glm_list_conc <- list()
+model_fig_conc <- list()
+model_data_conc <- list()
 for (wq_var in 1:length(choice_conc)) {
   
   var_list <- list()
@@ -184,9 +216,27 @@ for (wq_var in 1:length(choice_conc)) {
   glm_list_conc[[wq_var]]
   summary(glm_list_conc[[wq_var]])
   
+  
+  model_data_conc[[wq_var]] <- data.frame(obs =glm_list_conc[[wq_var]]$BestModel$model$y,
+                                           pred=glm_list_conc[[wq_var]]$BestModel$fitted.values)
+  
+  model_fig_conc[[wq_var]] <- ggplot(data=model_data_conc[[wq_var]], aes(x=obs,
+                                                                           y=pred)) + 
+    geom_point() +  
+    ggtitle(choice_conc[wq_var]) + 
+    labs(x = 'observations', y='predictions' ) + 
+    geom_abline() + 
+    theme_bw()
+  
+  print(model_fig_conc[[wq_var]])
+  
+  
 }
 
 names(glm_list_conc)<-choice_conc
+glm_list_conc
+print(model_fig_conc)
+
 
 wq_var <-1
 fig_list <- list()

@@ -51,3 +51,4 @@ if (nrow(mdc) == length(responses)) {
   stop("Somethign went wrong with calculating the minimum detectable change. To debug, see code in scripts/data_analysis/1_mdc_before_after.R.")
 }
 
+rm(mod.before)

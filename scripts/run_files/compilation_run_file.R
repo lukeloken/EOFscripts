@@ -36,3 +36,6 @@ source('scripts/data_compliation/3_combine_soil_water_data.R')
 
 #plot loads and concentration data by water year and runoff volume
 source('scripts/data_compliation/4_plot_stormrunoff_data.R')
+
+#plot soil quality data. Lots of figures
+source('scripts/data_compliation/4_plot_soilquality.R')

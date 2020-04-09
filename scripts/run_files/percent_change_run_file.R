@@ -29,6 +29,10 @@ source('scripts/functions/not_all_na.R')
 #This currently points at the P:Drive
 path_to_data <- "P:/0301"
 
+#Temporary place while teleworking
+path_to_data <- "C:/copy of P0301/0301"
+
+
 #Currently outputs are saved here. 
 # This can change later when/if results should be saved in a shared location
 path_to_results <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth"
@@ -116,6 +120,7 @@ states <- c("IN", "MI", "WI", "OH", "NY")
 predictors_list <- list()
 
 site_nu <- 15
+# for (site_nu in 15:20){
 for (site_nu in 1:length(all_sites)){
   site_name <- all_sites[site_nu]
   print(site_name)
@@ -129,7 +134,7 @@ for (site_nu in 1:length(all_sites)){
       select_if(not_all_na) %>%
       select_if(function(x) {all(!is.infinite(x))})
   
-    dat <- filter(dat, storm_middate>start_date & storm_middate<end_date)
+    # dat <- filter(dat, storm_middate>start_date & storm_middate<end_date)
     
     #For testing can load site file for WI-SW1 for comparison.
     # dat <- read.csv("P:/0301/field_analysis/results/WI-SW1/2020-03-06-1203/tables/WI-SW1_mod_dat.csv")
@@ -152,11 +157,11 @@ for (site_nu in 1:length(all_sites)){
 
     if (length(modvars_files) == 0){
       if (state == 'NY') {
-        modvars_files <- "P:/0301/field_analysis/results/NY-SW4/2020-02-20-1027/cache/modvars.Rdata"
+        modvars_files <- file_in(file.path(path_to_data, "field_analysis/results/NY-SW4/2020-02-20-1027/cache/modvars.Rdata"))
         message(paste0("no modvars.Rdata file. Used NY-SW4 file for", toString(site_name)))
       } else if (state == 'WI'){
         modvars_files <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth/Data/modvars.Rdata"
-        message(paste0("no modvars.Rdata file. Used WI-SW1 file for", toString(site_name)))
+        message(paste0("no modvars.Rdata file. Used WI-SW1 file for ", toString(site_name)))
       } else if (state %in% c('IN', 'MI', 'OH')){
         predictors <- intersect(predictors_all, names(dat))
         message(paste0("no modvars.Rdata file. Used predictor list at top of script for ", toString(site_name)))
@@ -173,7 +178,7 @@ for (site_nu in 1:length(all_sites)){
       }
     }
 
-if (length(modvars_files)>1){
+if (length(modvars_files)==1){
     load(file = modvars_files)
 }
     
@@ -218,7 +223,9 @@ if (length(modvars_files)>1){
     #output a summary table, model list, and set of figures
     source('scripts/percent_change_analysis/2_before_after_perchange_mlm_v2.R', echo = F)
     
-    per.change.tableout
+    per.change.list.allsites[[site_nu]] <- per.change.tableout
+
+    rm(per.change.tableout)
     # temp_filename <- file.path('data_cached', paste0(site_nu, '_percent_reduction_before_after_mlm.csv'))
     # write.csv(per.change.tableout, temp_filename, row.names = F)
     
@@ -227,5 +234,12 @@ if (length(modvars_files)>1){
     #end
 }
 
+per.change.df.allsites <-ldply(per.change.list.allsites, data.frame, .id='site') 
 
-per.change.df.allsites <-ldply(per.change.list.allsites, data.frame, .id='site')
+per.change.df.allsites[c('fit', 'mad', 'lwr', 'upr')] <- round(per.change.df.allsites[c('fit', 'mad', 'lwr', 'upr')], 2)
+
+#Save percent change calculations
+write.csv(per.change.df.allsites, file=(file_out(file.path(path_to_data, "compiled_data", "percent_change", "percent_change_allsites.csv" ))), row.names = F)
+
+saveRDS(per.change.df.allsites, file=(file_out(file.path(path_to_data, "compiled_data", "percent_change", "percent_change_allsites.rds" ))))
+

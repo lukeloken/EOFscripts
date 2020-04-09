@@ -1,6 +1,8 @@
 
 
 #prepare data for percent change analysis
+predictors <- intersect(predictors, names(dat))
+
 dat.predictors <- dat[,predictors]
 dat.mod.complete <- complete.cases(dat.predictors)
 

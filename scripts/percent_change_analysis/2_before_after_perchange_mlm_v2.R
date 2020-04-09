@@ -59,7 +59,7 @@ for (i in 1:length(responses)) {
   
   mod <- randomForest(mod.equation, data = dat.mod, importance = T, na.action = na.omit, ntree=1000)
   #mod.before <- randomForest(mod.equation, data = dat.mod.before, importance = T, na.action = na.omit, ntree = 1000)
-  print(randomForest::varImpPlot(mod))
+  # print(randomForest::varImpPlot(mod))
   
   perc.var[i] <- round(mod$rsq[500]*100, 1)
   
@@ -160,6 +160,10 @@ for (i in 1:(length(responses))) {
   
   mod.equation <- as.formula(paste(responses[i], paste(predictors.keep, collapse = " + "), sep = " ~ "))
 
+  mod.before <- randomForest(mod.equation, data = dat.mod.before, importance = T, na.action = na.omit, ntree = 1000)
+  mod.after <- randomForest(mod.equation, data = dat.mod.after, importance = T, na.action = na.omit, ntree = 1000)
+  
+  
   # ###########################
   # Quantile regression forest
   # ###########################
@@ -228,7 +232,7 @@ for (i in 1:(length(responses))) {
   
   predict_gather <- predict_join %>%
     select(period, obs_before, quantile..0.5_before, quantile..0.5_after) %>%
-    rename(obs = obs_before,
+    dplyr::rename(obs = obs_before,
            before_mod = quantile..0.5_before, 
            after_mod = quantile..0.5_after) %>%
     gather(key = model, value=pred, 3:4) %>%
@@ -256,12 +260,17 @@ for (i in 1:(length(responses))) {
   
 
   
+  #Calculate percent differnece between before and after models for every event 
+  #Calcualte the median percent difference among all events (center)
+  #Calcualte median absolute deivation (mad) among all events (error bars)
   
   
   perdiff.mean = (10^predict.table.before$mean - 10^predict.table.after$mean)/
     (10^predict.table.before$mean + 10^predict.table.after$mean)*200
-  perdiff.median = (10^predict.table.before$quantile..0.5_before - 10^predict.table.after$quantile..0.5_after)/
-    (10^predict.table.before$quantile..0.5_before + 10^predict.table.after$quantile..0.5_after)*200
+  perdiff.median = (10^predict.table.before$quantile..0.5_before -
+                      10^predict.table.after$quantile..0.5_after)/
+    (10^predict.table.before$quantile..0.5_before +
+       10^predict.table.after$quantile..0.5_after)*200
   
   mean_perdiff <- mean(perdiff.mean)
   sd_perdiff <- sd(perdiff.mean)
@@ -270,7 +279,7 @@ for (i in 1:(length(responses))) {
   mad_perdiff <- mad(perdiff.median)
   
   
-  # Percent diff by storm event 50 quantile prediction
+  # Save percent diff in table 
   per.change.table <- data.frame(matrix(ncol=5, nrow=1))
   names(per.change.table) <- c('model', 'fit', 'mad', 'lwr', 'upr')
   per.change.table$model[1] <- 'median_perdiff'
@@ -342,6 +351,7 @@ for (i in 1:(length(responses))) {
   # resume other script
   # ############################
   
+ 
   # get residuals from before model for MDC calc
   resid.before <-dat.mod.before[, responses[i]] - mod.before$predicted
   
@@ -408,15 +418,19 @@ otherresponses_medianperdiff = data.frame(variable = responses[-which(responses 
 
 per.change.tableout <- per.change.tableout %>%
   full_join(otherresponses_medianperdiff, by=c('variable', 'model')) %>%
-  mutate(variable = factor(variable, rev(responses))) 
+  mutate(variable = factor(variable, rev(responses)))
+
 
 per.change.tableout$name <- c(clean_names, other_names)[match(per.change.tableout$variable, c(responses_clean, other_responses))]
 
 per.change.tableout$name <- factor(per.change.tableout$name, rev(c(clean_names, other_names)))
 
-per.change.table.plot <- per.change.tableout %>%
-  group_by(variable, value=model) %>%
-  tidyr::gather(metric, value, 3:5) 
+
+per.change.tableout$site <- rep(site_name, nrow(per.change.tableout))
+
+# per.change.table.plot <- per.change.tableout %>%
+#   group_by(variable, value=model) %>%
+#   tidyr::gather(metric, value, 3:6) 
 
 
 
@@ -447,3 +461,4 @@ if (length(Calculated_rows)>0) {
 } else {
   message("No responses were found to be different at a p-value less than 0.15")
 }
+

@@ -23,11 +23,16 @@ source('scripts/data_compliation/1_load_all_data.R')
 # as of January 2020, this only includes spring 2016 and fall 2017 data
 source('scripts/data_compliation/1_load_soil_data.R')
 
+#load farm management data
+source('scripts/data_compliation/1_load_field_data.R')
 
 #summarize water quality data
-#Currently makes lots of figures
 source('scripts/data_compliation/2_summarize_data.R')
 
+#Merge soil and water quality data. 
+#Currently takes the mean of individual events for water, but should be revisited
+#Script also makes a lot of figures that should be moved elsewhere
+source('scripts/data_compliation/3_combine_soil_water_data.R')
 
 #plot loads and concentration data by water year and runoff volume
 source('scripts/data_compliation/4_plot_stormrunoff_data.R')

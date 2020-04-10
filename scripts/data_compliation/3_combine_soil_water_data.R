@@ -19,7 +19,7 @@ wq_vars <- c(loadvars, concvars, yieldvars, yieldperweqvars)
 #collapse data to only water year with soil data
 #Compute annual metrics
 
-data_merge <- data_df3 %>%
+data_merge_median <- data_df3 %>%
   mutate(wateryear = as.numeric(as.character(wateryear))) %>%
   filter(wateryear %in% c(2016:2017), frozen == 0) %>%
   # filter(wateryear == unique(soil_0_15$wateryear), frozen == 0) %>%
@@ -41,6 +41,25 @@ data_merge_2016 <- data_df3 %>%
   left_join(soil_0_15) %>%
   drop_na(Manure) 
   
+#Experimenting with flow weighted means
+wq_weightedvars <- wq_vars[which(wq_vars %notin% c('runoff_volume', 'runoff_volume_cubicfootperAcre', 
+                                                   'runoff_cubicmeter_percubicmeterWEQ'))]
+data_merge2 <- data_df3 %>%
+  mutate(wateryear = as.numeric(as.character(wateryear))) %>%
+  filter(wateryear %in% c(2016:2017), frozen == 0) %>%
+  # filter(wateryear == unique(soil_0_15$wateryear), frozen == 0) %>%
+  rename(Site = site) %>%
+  dplyr::select(wateryear, Site, wq_vars, peak_discharge, rain) %>%
+  group_by(Site) %>%
+  summarise_at(wq_weightedvars, 
+               funs(weighted.mean(., runoff_volume, na.rm=T))) %>%
+  left_join(soil_0_15) %>%
+  drop_na(Manure) %>%
+  left_join(data_merge_median[c('Site', 'runoff_volume', 'runoff_volume_cubicfootperAcre', 
+                                'runoff_cubicmeter_percubicmeterWEQ')])
+
+  
+data_merge <- data_merge2
 
 # ggplot(data=data_merge_2016_2017, aes(x=Bray_P, y=orthophosphate_yield_poundperAcreperInchWEQ)) +
   # geom_point(aes(color=Manure))

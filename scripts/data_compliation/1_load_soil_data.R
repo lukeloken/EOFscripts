@@ -11,6 +11,39 @@ source('scripts/functions/ScaleYLog10Nice.R')
 
 soil_df <- read.csv(file_in(file.path(path_to_data, 'soil', 'raw_data', "EoF_SoilData_2016-2017.csv")), header=T, stringsAsFactors = F)
 
+slope_df <- read_excel(file_in(file.path(path_to_data, 'soil', 'raw_data', "Data_Working_Export_USGS_041020.xlsx"))) %>%
+  filter(Depth < 20, Year =='01') %>%
+  rename(Soil_Sub_Order = `Soil_Sub-Order`,
+         Residue_Cover = `Residue Cover` ) %>%
+  select(Site, SamplePt, Depth, Sample_Date, Latitude, Longitude, Residue_Cover, Texture, CSQI_CLIM,
+         SQI_Text_Class, Soil_Sub_Order, SQI_SO_Class, Slope) %>%
+  mutate(Depth = as.numeric(Depth),
+         Sample_Date = as.Date(Sample_Date, format='%m%d%Y')) 
+
+slope_df$Site <- gsub("-0", "-SW", slope_df$Site)
+
+slope_numeric <- slope_df %>%
+  group_by(Site)  %>%
+  summarize_at(vars(Residue_Cover, Slope), mean)
+
+slope_texture <- slope_df %>%
+  group_by(Site)  %>%
+  filter(Depth <6) %>%
+  count(Texture) %>%
+  slice(which.max(n)) %>%
+  select(-n)
+
+slope_order <- slope_df %>%
+  group_by(Site)  %>%
+  filter(Depth <6) %>%
+  count(Soil_Sub_Order) %>%
+  slice(which.max(n)) %>%
+  select(-n)
+
+slope_combined <- full_join(slope_numeric, slope_texture) %>%
+  full_join(slope_order)
+  
+
 #When more than one file is included, add code here
 
 #First file is missing dates
@@ -71,8 +104,8 @@ soil_df3 <- soil_df2 %>%
   mutate(Depth = factor(Depth, c( '05', '0-15', '15', '30'))) %>%
   dplyr::group_by(Site, Date, Depth, Manure) %>%
   summarize_at(vars(OM:P_Silt), mean, na.rm=T) %>%
-  select_if(~sum(!is.na(.)) > 0)
-  
+  select_if(~sum(!is.na(.)) > 0) %>%
+  full_join(slope_combined)
 
 
 intersect(names(soil_df3), names(soil_fall_summary))
@@ -82,7 +115,7 @@ soil_joined <- full_join(soil_df3, soil_fall_summary) %>%
   rename(OM_spring = OM, Bulk_Den_spring = Bulk_Den)
 
 soil_0_15 <- filter(soil_joined, Depth == "0-15") %>%
-  select_if(not_all_na)
+  select_if(not_all_na) 
 
 #save 0 to 15 cm depth for converging with water quality data
 write.csv(soil_df3, file=file_out(file.path(path_to_data, 'soil', 'cleaned_data', 'Soil2016_Spring.csv')), row.names = F)

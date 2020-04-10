@@ -14,6 +14,7 @@ path_to_data <- "C:/copy of P0301/0301"
 path_to_results <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth"
 
 #load libraries
+# library(conflicted)
 library(drake)
 library(plyr)
 library(dplyr)
@@ -29,5 +30,7 @@ library(lubridate)
 library(corrplot)
 library(PerformanceAnalytics)
 library(bestglm)
+
+# conflict_prefer("rename", "dplyr")
 
 source('scripts/run_files/compilation_run_file.R')

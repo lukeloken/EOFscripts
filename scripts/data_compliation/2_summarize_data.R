@@ -148,6 +148,62 @@ print(runoff_index_bysite)
 ggsave(file_out(file.path(path_to_results, "Figures", "RunoffIndex_bySiteMonth.png")), runoff_index_bysite, height=7, width=10, units = 'in', dpi=320)
 
 
+
+#Suspended sediment
+suspended_sediment <- ggplot(data_df3[which(data_df3$frozen == FALSE),], aes(x=site, y=suspended_sediment_conc_mgL, fill=state)) +
+  # geom_hline(yintercept = 1) +
+  geom_jitter(width=.1, height=0, aes(col=state), alpha=.2, shape=16) + 
+  # geom_violin(draw_quantiles=c(.5), size=.5, aes(alpha=type_binary), trim=T) +
+  geom_boxplot(size=.5, aes(alpha=type_binary), outlier.shape=NA) +
+  # scale_alpha(range=c(.5,0)) + 
+  scale_alpha(range=c(.5,0), guide='none') +
+  scale_y_log10nice(name = "suspended sediment (mg/L)", limits = c(.5, 20000)) +
+  theme_bw() +
+  theme(legend.position='bottom', panel.grid.minor=element_blank()) +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+
+print(suspended_sediment)
+
+ggsave(file_out(file.path(path_to_results, "Figures", "SuspendedSediment_boxplot.png")), suspended_sediment, height=4, width=5, units = 'in', dpi=320)
+
+#TP
+TP_boxplot <- ggplot(data_df3[which(data_df3$frozen == FALSE),], aes(x=site, y=tp_unfiltered_conc_mgL, fill=state)) +
+  # geom_hline(yintercept = 1) +
+  geom_jitter(width=.1, height=0, aes(col=state), alpha=.2, shape=16) + 
+  # geom_violin(draw_quantiles=c(.5), size=.5, aes(alpha=type_binary), trim=T) +
+  geom_boxplot(size=.5, aes(alpha=type_binary), outlier.shape=NA) +
+  # scale_alpha(range=c(.5,0)) + 
+  scale_alpha(range=c(.5,0), guide='none') +
+  scale_y_log10nice(name = "Total P (mg/L)", limits = c(.01, 100)) +
+  # scale_y_log10nice(name = "Total P (mg/L)") +
+  theme_bw() +
+  theme(legend.position='bottom', panel.grid.minor=element_blank()) +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+
+print(TP_boxplot)
+
+ggsave(file_out(file.path(path_to_results, "Figures", "TP_boxplot.png")), TP_boxplot, height=4, width=5, units = 'in', dpi=320)
+
+
+#OrthoP
+SRP_boxplot <- ggplot(data_df3[which(data_df3$frozen == FALSE),], aes(x=site, y=orthophosphate_conc_mgL, fill=state)) +
+  # geom_hline(yintercept = 1) +
+  geom_jitter(width=.1, height=0, aes(col=state), alpha=.2, shape=16) + 
+  # geom_violin(draw_quantiles=c(.5), size=.5, aes(alpha=type_binary), trim=T) +
+  geom_boxplot(size=.5, aes(alpha=type_binary), outlier.shape=NA) +
+  # scale_alpha(range=c(.5,0)) + 
+  scale_alpha(range=c(.5,0), guide='none') +
+  scale_y_log10nice(name = "SRP (mg/L)", limits = c(.001, 50)) +
+  # scale_y_log10nice(name = "Total P (mg/L)") +
+  theme_bw() +
+  theme(legend.position='bottom', panel.grid.minor=element_blank()) +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+
+print(SRP_boxplot)
+
+ggsave(file_out(file.path(path_to_results, "Figures", "SRP_boxplot.png")), SRP_boxplot, height=4, width=5, units = 'in', dpi=320)
+
+
 #save rds file to the P drive
 #This file was created using the "1_load_all_data.R" script
 saveRDS(data_df3 , file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_conc_allsites_model.rds"))))

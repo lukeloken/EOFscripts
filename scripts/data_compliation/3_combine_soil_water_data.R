@@ -99,7 +99,7 @@ choice_physics <- c("suspended_sediment_conc_mgL", "suspended_sediment_yield_pou
 #If need to subset soil vars
 choice_soil <-  soil_vars[]
 
-predictors.cor <- cor(data_merge[,choice_soil], use = 'complete.obs') 
+predictors.cor <- cor(select_if(data_merge[,choice_soil], is.numeric), use = 'complete.obs') 
 names.cor <- row.names(predictors.cor)
 drop.predictors <- caret::findCorrelation(predictors.cor, cutoff = 0.95, verbose = FALSE, exact = TRUE)
 predictors.keep <- c(names.cor[-drop.predictors], 'Manure')
@@ -178,11 +178,12 @@ for (wq_var in 1:length(choice_yields)) {
   if (choice_yields[wq_var] %in% choice_physics){
     data.glm <- data_merge[c(predictors.keep.physics, choice_yields[wq_var])] %>%
       # mutate(Manure = factor(Manure, levels=c('No Manure', "Manure"))) %>%
-      select_if(~ !any(is.na(.))) %>%
+      # select_if(~ !any(is.na(.))) %>%
+      drop_na() %>%
       data.frame()
   }
   
-  glm_list_yield[[wq_var]]<-bestglm(data.glm, family=gaussian, IC='BIC', nvmax=3)
+  glm_list_yield[[wq_var]]<-bestglm(data.glm, family=gaussian, IC='BIC', nvmax=2)
   print(choice_yields[wq_var])
   glm_list_yield[[wq_var]]
   summary(glm_list_yield[[wq_var]])
@@ -274,7 +275,7 @@ for (wq_var in 1:length(choice_conc)) {
       data.frame()
   }
   
-  glm_list_conc[[wq_var]]<-bestglm(data.glm, family=gaussian, IC='BIC', nvmax=3)
+  glm_list_conc[[wq_var]]<-bestglm(data.glm, family=gaussian, IC='BIC', nvmax=2)
   print(choice_conc[wq_var])
   glm_list_conc[[wq_var]]
   summary(glm_list_conc[[wq_var]])
@@ -300,6 +301,9 @@ names(glm_list_conc)<-choice_conc
 glm_list_conc
 print(model_fig_conc)
 
+print(model_fig_conc[7])
+glm_list_conc[7]
+summary(glm_list_conc[[7]])
 
 wq_var <-1
 fig_list <- list()

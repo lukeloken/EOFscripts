@@ -60,8 +60,54 @@ data_merge2 <- data_df3 %>%
                                 'runoff_cubicmeter_percubicmeterWEQ')]) %>%
   mutate_if(is.character, as.factor)
 
+#Experimenting with runoff index calculations
+data_merge_runofftotal <- data_df3 %>%
+  mutate(wateryear = as.numeric(as.character(wateryear))) %>%
+  filter(wateryear %in% c(2016:2017), frozen == 0) %>%
+  rename(Site = site) %>%
+  mutate(weq_volume_m3 = weq*Area_acres*4046.86/39.3701,
+         runoff_volume_m3 = runoff_volume/35.3147) %>%
+  dplyr::select(Site, Type, weq_volume_m3, runoff_volume_m3) %>%
+  group_by(Site, Type) %>%
+  na.omit() %>%
+  summarize_all(sum) %>%
+  mutate(runoff_Index = runoff_volume_m3/weq_volume_m3) %>%
+  select(-weq_volume_m3, -runoff_volume_m3)
 
-data_merge <- data_merge2
+data_merge_runofftotal
+
+ggplot(data_merge_runofftotal, aes(y=runoff_Index, x=Site, fill=Type)) + 
+  geom_bar(stat='identity') +
+  theme(axis.text.x=element_text(angle=90))
+
+
+#Calculating yields by summing first (equivilent to mean then divide)
+data_merge_loadtotal <- data_df3 %>%
+  mutate(wateryear = as.numeric(as.character(wateryear))) %>%
+  filter(wateryear %in% c(2016:2017), frozen == 0) %>%
+  rename(Site = site) %>%
+  mutate(weq_volume_m3 = weq*Area_acres*4046.86/39.3701) %>%
+  select(Site, Type, loadvars, weq_volume_m3) %>%
+  group_by(Site, Type) %>%
+  # na.omit() %>%
+  summarize_all(mean, na.rm=T) 
+
+data_merge_yieldtotal <- data.frame(sapply(data_merge_loadtotal[,loadvars], function (x) x*453.592/data_merge_loadtotal$weq_volume_m3)) %>%
+  select(-runoff_volume) 
+
+names(data_merge_yieldtotal) <- gsub("_load_pounds", "_yield_mgL", names(data_merge_yieldtotal))
+
+data_merge_yieldtotal$doc_yield_mgL[which(data_merge_yieldtotal$doc_yield_mgL==0)] <- NaN
+data_merge_yieldtotal$toc_yield_mgL[which(data_merge_yieldtotal$toc_yield_mgL==0)] <- NaN
+
+data_merge3 <- bind_cols(data_merge_runofftotal, data_merge_yieldtotal) %>%
+  filter(Site %in% data_merge2$Site) %>%
+  right_join(data_merge2)
+
+data.frame(data_merge3)
+
+
+data_merge <- data_merge3
 
 # ggplot(data=data_merge_2016_2017, aes(x=Bray_P, y=orthophosphate_yield_poundperAcreperInchWEQ)) +
 # geom_point(aes(color=Manure))
@@ -89,12 +135,14 @@ data_merge <- data_merge2
 #   geom_point(aes(color=Manure))
 
 
+choice_yields <- c(names(data_merge_yieldtotal)[1:9], 'runoff_Index')
 
-# choice_yields <-  paste0(yieldvars, "perInchWEQ")[c(1,3,7,8)]
-choice_yields <-  yieldperweqvars[c(1:9,12)]
+# choice_yields <-  yieldperweqvars[c(1:9,12)]
 choice_conc <- concvars[1:9]
-choice_physics <- c("suspended_sediment_conc_mgL", "suspended_sediment_yield_poundperAcreperInchWEQ", 
-                    "runoff_cubicmeter_percubicmeterWEQ")
+choice_physics <- c("suspended_sediment_conc_mgL", "suspended_sediment_yield_mgL", "runoff_index")
+                   
+# choice_physics <- c("suspended_sediment_conc_mgL", "suspended_sediment_yield_poundperAcreperInchWEQ", 
+                    # "runoff_cubicmeter_percubicmeterWEQ")
 
 #If need to subset soil vars
 choice_soil <-  soil_vars[]

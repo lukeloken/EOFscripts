@@ -7,6 +7,10 @@ print(path_to_data)
 #This file was created using the "1_load_all_data.R" script
 data_df <- readRDS(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_model_data.rds" )))
 
+#New dataset with concentration already included
+# data_df <- readRDS(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_approved_data.rds" )))
+
+
 #watershed areas
 EOF_areas <-read.csv(file=file_in(file.path(path_to_data, 'SiteCharacteristics','EOF_WatershedAreas.csv'))) %>%
   rename(site = Site)

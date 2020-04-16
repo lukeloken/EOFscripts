@@ -24,53 +24,53 @@ for (file_nu in 1:length(approved_files)){
   file <- approved_files[file_nu]
   path_to_sitefile <- file.path(path_to_data, "field_analysis", "approved_site_data", file)
   
-      #Find site name and timezone  for the site
-      
-      file_site_list <- unlist(strsplit(file, "-"))
-      state <- substr(file_site_list[1], nchar(file_site_list[1])-1, nchar(file_site_list[1]))
-      site <- substr(file_site_list[2], 1,3)
-      full_site <- paste(state, site, sep='-')
-
-      if (state %in% c('WI')){
-        state_tz <- 'America/Chicago'
-      } else if (state %in% c('OH', 'NY', 'IN', 'MI')){
-        state_tz <- 'America/New_York'
-      }
-      
-      #load and combine all model (mod) files
-        data_i <- read.csv(path_to_sitefile, stringsAsFactors = F, header=T) %>%
-          mutate(sample_start = anytime(sample_start, tz=state_tz),
-               sample_end = anytime(sample_end, tz=state_tz),
-               storm_start =anytime(storm_start, tz=state_tz),
-               storm_end = anytime(storm_end, tz=state_tz)) %>%
-          arrange(storm_start) %>%
-          # select(-file_id) %>%
-          distinct()
-        
-        #remove rows that are entirely NA
-        data_i[as.logical((rowSums(is.na(data_i))-ncol(data_i))),]
-        
-        if ('storm_runoff_cubic_feet' %in% names(data_i)){
-            data_i <- dplyr::mutate(data_i, runoff_volume = storm_runoff_cubic_feet) %>%
-              select(-storm_runoff_cubic_feet)
-        
-        }
-        
-        data_i <- mutate(data_i, runoff_volume = as.numeric(runoff_volume))
-        
-        # data_i <- read.csv(path_to_sitefile, stringsAsFactors = F, header=T) %>%
-        #   mutate(sample_start = as.POSIXct(sample_start, tz=state_tz, format='%m/%d/%Y %H:%M'),
-        #          sample_end = as.POSIXct(sample_end, tz=state_tz, format='%m/%d/%Y %H:%M'),
-        #          storm_start = as.POSIXct(storm_start, tz=state_tz, format='%m/%d/%Y %H:%M'),
-        #          storm_end = as.POSIXct(storm_end, tz=state_tz, format='%m/%d/%Y %H:%M')) %>%
-        #   arrange(storm_start) %>%
-        #   # select(-file_id) %>%
-        #   distinct()
-      
-      #place data into list
-        allsites_list[[file_nu]]<-data_i
-        names(allsites_list)[[file_nu]] <- full_site
-    }
+  #Find site name and timezone  for the site
+  
+  file_site_list <- unlist(strsplit(file, "-"))
+  state <- substr(file_site_list[1], nchar(file_site_list[1])-1, nchar(file_site_list[1]))
+  site <- substr(file_site_list[2], 1,3)
+  full_site <- paste(state, site, sep='-')
+  
+  if (state %in% c('WI')){
+    state_tz <- 'America/Chicago'
+  } else if (state %in% c('OH', 'NY', 'IN', 'MI')){
+    state_tz <- 'America/New_York'
+  }
+  
+  #load and combine all model (mod) files
+  data_i <- read.csv(path_to_sitefile, stringsAsFactors = F, header=T) %>%
+    mutate(sample_start = anytime(sample_start, tz=state_tz),
+           sample_end = anytime(sample_end, tz=state_tz),
+           storm_start =anytime(storm_start, tz=state_tz),
+           storm_end = anytime(storm_end, tz=state_tz)) %>%
+    arrange(storm_start) %>%
+    # select(-file_id) %>%
+    distinct()
+  
+  #remove rows that are entirely NA
+  data_i[as.logical((rowSums(is.na(data_i))-ncol(data_i))),]
+  
+  if ('storm_runoff_cubic_feet' %in% names(data_i)){
+    data_i <- dplyr::mutate(data_i, runoff_volume = storm_runoff_cubic_feet) %>%
+      select(-storm_runoff_cubic_feet)
+    
+  }
+  
+  data_i <- mutate(data_i, runoff_volume = as.numeric(runoff_volume))
+  
+  # data_i <- read.csv(path_to_sitefile, stringsAsFactors = F, header=T) %>%
+  #   mutate(sample_start = as.POSIXct(sample_start, tz=state_tz, format='%m/%d/%Y %H:%M'),
+  #          sample_end = as.POSIXct(sample_end, tz=state_tz, format='%m/%d/%Y %H:%M'),
+  #          storm_start = as.POSIXct(storm_start, tz=state_tz, format='%m/%d/%Y %H:%M'),
+  #          storm_end = as.POSIXct(storm_end, tz=state_tz, format='%m/%d/%Y %H:%M')) %>%
+  #   arrange(storm_start) %>%
+  #   # select(-file_id) %>%
+  #   distinct()
+  
+  #place data into list
+  allsites_list[[file_nu]]<-data_i
+  names(allsites_list)[[file_nu]] <- full_site
+}
 
 #Combine all sites into a single data.frame
 data_df <- ldply(allsites_list, data.frame, .id = "site") 
@@ -122,54 +122,126 @@ if (identical(badnames, c("no2_no3_n_load_pounds", "total_phosphorus_unfiltered_
                           "NO2.NO3.N..Load..pounds", "Ammonium..N..Load..pounds",
                           "TKN.Unfiltered.Load..pounds", "Dissolved.Reactive.Phosphorus.Load..pounds",
                           "TP.Unfiltered.Load..pounds", "Total.Nitrogen.Load..in.pounds",
-                          "Organic.Nitrogen.Load..pounds")
-              )==FALSE) {
+                          "Organic.Nitrogen.Load..pounds", "total_nitrogen_load_in_pounds")
+)==FALSE) {
   
   stop("check column names in '1_load_all_siteapproved_data.R'. Trying to merge columns, and more columns need to be identified")
   
 } else {
-
-
-replacenames <- c("no2_no3n_load_pounds", "tp_unfiltered_load_pounds", 
-                  "total_nitrogen_load_pounds", "organic_nitrogen_load_pounds", 
-                  "suspended_sediment_load_pounds", "chloride_load_pounds",
-                  "no2_no3n_load_pounds", "ammonium_n_load_pounds",
-                  "tkn_unfiltered_load_pounds", "orthophosphate_load_pounds",
-                  "tp_unfiltered_load_pounds", "total_nitrogen_load_pounds",
-                  "organic_nitrogen_load_pounds", "total_nitrogen_load_pounds")
-
-
-var=1
-for (var in 1:length(badnames)){
-  NAs <- which(is.na(data_df[,replacenames[var]]))
-  data_df[,replacenames[var]][NAs] <- data_df[,badnames[var]][NAs]
-  # print(paste0("Replaced ", toString(length(NAs)), " NAs in col ", toString(loadvars[var]), " with col ", toString(badvars[var])))
-  print(paste0("Column ", toString(replacenames[var]), " contained NAs. Replaced with ", toString(length(NAs)), " ",  toString(badnames[var])))
-    }
-
-data_df <- data_df %>%
-  dplyr::select(-badnames)
-
-#Calculate concentration using loads and runoff volume
-
-conc_df <- data.frame(sapply(data_df[,goodvars[-12]], function (x) x/data_df$runoff_volume*453592/28.3168))
-conc_df <- signif(conc_df, 4)
-colnames(conc_df) <- concvars
-
-data_df_withconc <- bind_cols(data_df, conc_df) %>%
-  filter(runoff_volume>0, is.finite(runoff_volume))
-
-
-
-
-
-saveRDS(data_df, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_approved_data.rds" ))))
-
-write.csv(data_df, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_approved_data.csv" ))), row.names=F)
-
-merged_sites <- data.frame(sites = as.character(unique(data_df$site)), stringsAsFactors = F)
-merged_sites <- arrange(merged_sites, sites)
-
+  
+  
+  replacenames <- c("no2_no3n_load_pounds", "tp_unfiltered_load_pounds", 
+                    "total_nitrogen_load_pounds", "organic_nitrogen_load_pounds", 
+                    "suspended_sediment_load_pounds", "chloride_load_pounds",
+                    "no2_no3n_load_pounds", "ammonium_n_load_pounds",
+                    "tkn_unfiltered_load_pounds", "orthophosphate_load_pounds",
+                    "tp_unfiltered_load_pounds", "total_nitrogen_load_pounds",
+                    "organic_nitrogen_load_pounds", "total_nitrogen_load_pounds")
+  
+  
+  var=1
+  for (var in 1:length(badnames)){
+    NAs <- which(is.na(data_df[,replacenames[var]]))
+    data_df[,replacenames[var]][NAs] <- data_df[,badnames[var]][NAs]
+    # print(paste0("Replaced ", toString(length(NAs)), " NAs in col ", toString(loadvars[var]), " with col ", toString(badvars[var])))
+    print(paste0("Column ", toString(replacenames[var]), " contained NAs. Replaced with ", toString(length(NAs)), " ",  toString(badnames[var])))
+  }
+  
+  data_df <- data_df %>%
+    dplyr::select(-badnames)
+  
+  #Calculate concentration using loads and runoff volume
+  
+  conc_df <- data.frame(sapply(data_df[,goodvars[-12]], function (x) x/data_df$runoff_volume*453592/28.3168))
+  conc_df <- signif(conc_df, 4)
+  colnames(conc_df) <- concvars
+  
+  # data_df_withconc <- bind_cols(data_df, conc_df) %>%
+  #   filter(runoff_volume>0, is.finite(runoff_volume))
+  
+  data_df_withconc <- bind_cols(data_df, conc_df)
+  
+  
+  #Manually identify multiple columns for each variable and unite
+  sediment_names <- names(data_df_withconc)[grepl('sediment', names(data_df_withconc), ignore.case=T)]
+  ammonium_names <- names(data_df_withconc)[grepl('Ammonium', names(data_df_withconc), ignore.case=T)]
+  nitrate_names <- names(data_df_withconc)[grepl('no3', names(data_df_withconc), ignore.case=T)]
+  TKN_names <- names(data_df_withconc)[grepl('tkn', names(data_df_withconc), ignore.case=T)]
+  organicN_names <-unique(c(names(data_df_withconc)[grepl('organic_nitrogen', names(data_df_withconc), ignore.case=T)], 
+                            names(data_df_withconc)[grepl('organic.nitrogen', names(data_df_withconc), ignore.case=T)]))
+  TN_names <- unique(c(names(data_df_withconc)[grepl('total_nitrogen', names(data_df_withconc), ignore.case=T)], 
+                       names(data_df_withconc)[grepl('Total.Nitrogen', names(data_df_withconc), ignore.case=T)]))
+  TP_names <- unique(c(names(data_df_withconc)[grepl('tp', names(data_df_withconc), ignore.case=T)], 
+                       names(data_df_withconc)[grepl('total_phosphorus', names(data_df_withconc), ignore.case=T)]))
+  SRP_names <- unique(c(names(data_df_withconc)[grepl('ortho', names(data_df_withconc), ignore.case=T)], 
+                        names(data_df_withconc)[grepl('Reactive.Phosphorus', names(data_df_withconc), ignore.case=T)]))
+  chloride_names <- names(data_df_withconc)[grepl('chloride', names(data_df_withconc), ignore.case=T)]
+  DOC_names <- names(data_df_withconc)[grepl('doc', names(data_df_withconc), ignore.case=T)]
+  TOC_names <- names(data_df_withconc)[grepl('toc', names(data_df_withconc), ignore.case=T)]
+  
+  conc_names_list <- list(sediment_names, ammonium_names, nitrate_names, TKN_names, organicN_names, 
+                          TN_names, TP_names, SRP_names, chloride_names, DOC_names, TOC_names)
+  
+  load_names <- names(data_df_withconc)[grepl('Load', names(data_df_withconc), ignore.case=T)]
+  conc_names <- names(data_df_withconc)[grepl('mg', names(data_df_withconc), ignore.case=T)]
+  
+  
+  #Loop through each variable and combine/compare concentration data
+  var_i = 1
+  data_df_new <- data_df_withconc
+  plot_list <- list()
+  for (var_i in 1:length(conc_names_list)){
+    
+    #Identify names to merge/compare
+    var_names <- intersect(conc_names, conc_names_list[[var_i]])
+    good_name <- var_names[which(var_names %in% concvars)]
+    
+    data_i <- data_df_withconc %>%
+      select(var_names, -good_name) %>%
+      mutate_all(as.character) %>%
+      bind_cols(data_df_withconc[good_name])
+    
+    data_i_unite <- unite(data_i, col=merge_var, 1:(length(var_names)-1), na.rm=T)
+    
+    names(data_i_unite)[1] <- as.character(paste0(good_name, '_unite'))
+    
+    #For values with less than symbol, assign a value of half of MDL
+    Below_mdl <- grepl("<", data_i_unite[,1])
+    data_i_unite[Below_mdl,1] <- as.numeric(gsub("<", "", data_i_unite[Below_mdl,1]))/2
+    
+    data_i_unite <- mutate_all(data_i_unite, as.numeric) %>%
+      mutate(site = data_df_withconc$site)
+    
+    # Ratio <- data_i_unite[,1] / data_i_unite[,2]
+    # Diff <- data_i_unite[,1] - data_i_unite[,2]
+    # 
+    # plot(Diff, main=good_name)
+    # plot(Ratio, main=good_name)
+    
+    #Compare calculated (from loads) with united column
+    plot_list[[var_i]] <- ggplot(data_i_unite, aes_string(x=names(data_i_unite)[1], y=names(data_i_unite)[2])) +
+      geom_point(aes(col=site), alpha=.5, size=2) +
+      geom_abline() +
+      theme_bw() +
+      scale_x_log10nice(name='merged concentrations') +
+      scale_y_log10nice(name='calculated from load') +
+      ggtitle(good_name)
+    
+    data_df_new <- data_df_new %>%
+      select(-var_names) %>%
+      bind_cols(data_i_unite[,1:2])
+    
+  }
+  
+  
+  
+  saveRDS(data_df_new, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_approved_data.rds" ))))
+  
+  write.csv(data_df_new, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_approved_data.csv" ))), row.names=F)
+  
+  merged_sites <- data.frame(sites = as.character(unique(data_df_new$site)), stringsAsFactors = F)
+  merged_sites <- arrange(merged_sites, sites)
+  
 }
 
 if (nrow(merged_sites) != 20){
@@ -181,82 +253,23 @@ if (nrow(merged_sites) != 20){
 
 
 
-
-
-
-
-
-
-#Manually
-
-
-
-sediment_names <- names(data_df_withconc)[grepl('sediment', names(data_df_withconc), ignore.case=T)]
-ammonium_names <- names(data_df_withconc)[grepl('Ammonium', names(data_df_withconc), ignore.case=T)]
-nitrate_names <- names(data_df_withconc)[grepl('no3', names(data_df_withconc), ignore.case=T)]
-TKN_names <- names(data_df_withconc)[grepl('tkn', names(data_df_withconc), ignore.case=T)]
-organicN_names <-unique(c(names(data_df_withconc)[grepl('organic_nitrogen', names(data_df_withconc), ignore.case=T)], 
-                          names(data_df_withconc)[grepl('organic.nitrogen', names(data_df_withconc), ignore.case=T)]))
-TN_names <- unique(c(names(data_df_withconc)[grepl('total_nitrogen', names(data_df_withconc), ignore.case=T)], 
-                     names(data_df_withconc)[grepl('Total.Nitrogen', names(data_df_withconc), ignore.case=T)]))
-TP_names <- unique(c(names(data_df_withconc)[grepl('tp', names(data_df_withconc), ignore.case=T)], 
-                     names(data_df_withconc)[grepl('total_phosphorus', names(data_df_withconc), ignore.case=T)]))
-SRP_names <- unique(c(names(data_df_withconc)[grepl('ortho', names(data_df_withconc), ignore.case=T)], 
-         names(data_df_withconc)[grepl('Reactive.Phosphorus', names(data_df_withconc), ignore.case=T)]))
-chloride_names <- names(data_df_withconc)[grepl('chloride', names(data_df_withconc), ignore.case=T)]
-DOC_names <- names(data_df_withconc)[grepl('doc', names(data_df_withconc), ignore.case=T)]
-TOC_names <- names(data_df_withconc)[grepl('toc', names(data_df_withconc), ignore.case=T)]
-
-conc_names_list <- list(sediment_names, ammonium_names, nitrate_names, TKN_names, organicN_names, 
-                        TN_names, TP_names, SRP_names, chloride_names, DOC_names, TOC_names)
-
-load_names <- names(data_df_withconc)[grepl('Load', names(data_df_withconc), ignore.case=T)]
-conc_names <- names(data_df_withconc)[grepl('mg', names(data_df_withconc), ignore.case=T)]
-
-
-
-data_df_new <- data_df_withconc
-
-#Loop through each variable and combine/compare concentration data
-var_i = 1
-plot_list <- list()
-for (var_i in 1:length(conc_names_list)){
-  
-#Identify names to merge/compare
-var_names <- intersect(conc_names, conc_names_list[[var_i]])
-good_name <- var_names[which(var_names %in% concvars)]
-
-data_i <- data_df_withconc %>%
-  select(var_names, -good_name) %>%
-  mutate_all(as.character) %>%
-  bind_cols(data_df_withconc[good_name])
-  
-data_i_unite <- unite(data_i, col=merge_var, 1:(length(var_names)-1), na.rm=T)
-
-names(data_i_unite)[1] <- as.character(paste0(good_name, '_unite'))
-
-#For values with less than symbol, assign a value of half of MDL
-Below_mdl <- grepl("<", data_i_unite[,1])
-data_i_unite[Below_mdl,1] <- as.numeric(gsub("<", "", data_i_unite[Below_mdl,1]))/2
-
-data_i_unite <- mutate_all(data_i_unite, as.numeric)
-
-#Compare calculated (from loads) with united column
-plot_list[[var_i]] <- ggplot(data_i_unite, aes_string(x=names(data_i_unite)[1], y=names(data_i_unite)[2])) +
-  geom_point(alpha=.2, size=2) +
-  geom_abline() +
-  theme_bw() +
-  scale_x_log10nice(name='merged concentrations') +
-  scale_y_log10nice(name='calculated from load') +
-  ggtitle(good_name)
-
-data_df_new <- data_df_new %>%
-  select(-var_names) %>%
-  bind_cols(data_i_unite)
-
-}
-
 plot_list
+
+ggplot(data_df_new, aes(y=total_phosphorus_conc_mgL, x=year(storm_start), group=factor(year(storm_start)), fill=factor(year(storm_start)))) +
+  geom_boxplot() +
+  facet_wrap(~site, scales='free_y') +
+  theme(legend.position='bottom', legend.title = element_blank()) +
+  scale_y_log10nice() +
+  labs(x='Year')
+
+                                                                                                                           ggplot(data_df_new, aes(y=total_phosphorus_conc_mgL/total_phosphorus_conc_mgL_unite, x=site, group=site, fill=site)) +
+  geom_jitter(aes(color=site), width= .1, height=0, alpha=.4) + 
+  geom_boxplot(aes(group=site), alpha=.6, outlier.shape = NA) +
+  # theme(legend.position='bottom') +
+  # scale_y_log10nice()
+  scale_y_continuous(limits=c(0,5)) +
+  theme_bw()
+
 
 
 # 
@@ -294,12 +307,7 @@ plot_list
 # data_df_new$tp_unfiltered_conc_mgL <- as.numeric(data_test)
 # 
 # 
-# ggplot(data_df_withconc, aes(y=TP_merged, fill=as.factor(year(storm_start)), group=as.factor(year(storm_start)))) + 
-#   geom_boxplot() +
-#   facet_wrap(~site, scales='free_y') +
-#   theme(legend.position='none') +
-#   scale_y_log10nice()
-# 
+
 # ggplot(data_df_withconc, aes(y=total_phosphorus_conc_mgL, fill=as.factor(year(storm_start)), group=as.factor(year(storm_start)))) + 
 #   geom_boxplot() +
 #   facet_wrap(~site, scales='free_y') +

@@ -14,13 +14,23 @@ soil_df <- read.csv(file_in(file.path(path_to_data, 'soil', 'raw_data', "EoF_Soi
 slope_df <- read_excel(file_in(file.path(path_to_data, 'soil', 'raw_data', "Data_Working_Export_USGS_041020.xlsx"))) %>%
   filter(Depth < 20, Year =='01') %>%
   rename(Soil_Sub_Order = `Soil_Sub-Order`,
-         Residue_Cover = `Residue Cover` ) %>%
+         Residue_Cover = `Residue Cover` ) 
+
+slope_df$Site <- gsub("-0", "-SW", slope_df$Site)
+
+slope_out <- slope_df %>%
+  filter(Depth == '05')  %>%
+  select(Site, SamplePt, Sample_Date, Latitude, Longitude, Texture, CSQI_CLIM, SQI_Text_Class, 
+         Soil_Sub_Order, SQI_SO_Class, Slope)
+
+write.csv(slope_out, file=file_out(file.path(path_to_data, 'soil', 'cleaned_data', "EoF_Soil_SampleLocations_2016.csv")), row.names = F)
+
+slope_df <- slope_df %>%
   select(Site, SamplePt, Depth, Sample_Date, Latitude, Longitude, Residue_Cover, Texture, CSQI_CLIM,
          SQI_Text_Class, Soil_Sub_Order, SQI_SO_Class, Slope) %>%
   mutate(Depth = as.numeric(Depth),
          Sample_Date = as.Date(Sample_Date, format='%m%d%Y')) 
 
-slope_df$Site <- gsub("-0", "-SW", slope_df$Site)
 
 slope_numeric <- slope_df %>%
   group_by(Site)  %>%

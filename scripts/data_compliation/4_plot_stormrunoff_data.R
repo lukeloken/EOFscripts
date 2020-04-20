@@ -192,6 +192,23 @@ RainByRunnoffIndex <- ggplot(data=data_df3[which(data_df3$rain <5 & data_df3$fro
 print(RainByRunnoffIndex)
 
 
+
+RainByRunnoffIndex <- ggplot(data=data_df3[which(data_df3$rain <5 & data_df3$frozen ==FALSE & data_df3$runoff_cubicmeter_percubicmeterWEQ <1 ),], aes_string(y="runoff_cubicmeter_percubicmeterWEQ", x="weq")) +
+  # scale_x_log10() +
+  # scale_y_log10() +
+  geom_point(aes(color=as.factor(month)), size=2) +
+  scale_shape_manual(values=c(16, 1))+
+  stat_smooth(method = "lm", se=F, alpha=.1) +
+  facet_wrap(~site, scales='free') +
+  theme_bw() +
+  theme(legend.position = 'bottom') +
+  guides(color = guide_legend(nrow = 1)) +
+  labs(y = "Runoff index")
+
+print(RainByRunnoffIndex)
+
+
+
 #############
 # Boxplots
 ##############

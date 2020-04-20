@@ -262,7 +262,7 @@ ggplot(data_df_new, aes(y=total_phosphorus_conc_mgL, x=year(storm_start), group=
   scale_y_log10nice() +
   labs(x='Year')
 
-                                                                                                                           ggplot(data_df_new, aes(y=total_phosphorus_conc_mgL/total_phosphorus_conc_mgL_unite, x=site, group=site, fill=site)) +
+                                                                                                                ggplot(data_df_new, aes(y=total_phosphorus_conc_mgL/total_phosphorus_conc_mgL_unite, x=site, group=site, fill=site)) +
   geom_jitter(aes(color=site), width= .1, height=0, alpha=.4) + 
   geom_boxplot(aes(group=site), alpha=.6, outlier.shape = NA) +
   # theme(legend.position='bottom') +

@@ -53,11 +53,11 @@ other_names <- c("SS (mg/L)", "Chloride (mg/L)",
                      "TKN conc (mg N/L)", "Orthophosphate conc (mg P/L)",
                      "TP conc (mg P/L)", " TN conc (mg N/L)", 
                      "Org N conc (mg N/L)",
-                     "Runoff volume yield (cf/acre)", "SS yield (pound/acre/inch)", 
-                     "Chloride yield (pound/acre/inch)", "NO2 + NO3 yield (pound/acre/inch)",
-                     "Ammonium yield (pound/acre/inch)", "TKN yield (pound/acre/inch)",
-                     "Orthophosphate yield (pound/acre/inch)", "TP yield (pound/acre/inch)",
-                     "TN yield (pound/acre/inch)", "Org N yield (pound/acre/inch)")
+                     "Runoff volume yield (cf/acre)", "SS yield (mg/L)", 
+                     "Chloride yield (mg/L)", "NO2 + NO3 yield (mg N/L)",
+                     "Ammonium yield (mg N/L)", "TKN yield (mg N/L)",
+                     "Orthophosphate yield (mg P/L)", "TP yield (mg P/L)",
+                     "TN yield (mg N/L)", "Org N yield (mg N/L)")
 
 #These are the response names in the merged data file. 
 responses_clean <- c("suspended_sediment_load_pounds", "chloride_load_pounds",
@@ -72,12 +72,12 @@ other_responses <- c("suspended_sediment_conc_mgL", "chloride_conc_mgL",
                      "tkn_unfiltered_conc_mgL", "orthophosphate_conc_mgL",
                      "tp_unfiltered_conc_mgL", "total_nitrogen_conc_mgL", 
                      "organic_nitrogen_conc_mgL",
-                     "runoff_volume_cubicfootperAcre", "suspended_sediment_yield_poundperAcreperInchWEQ", 
-                     "chloride_yield_poundperAcreperInchWEQ", "no2_no3n_yield_poundperAcreperInchWEQ",
-                     "ammonium_n_yield_poundperAcreperInchWEQ", "tkn_unfiltered_yield_poundperAcreperInchWEQ",
-                     "orthophosphate_yield_poundperAcreperInchWEQ", "tp_unfiltered_yield_poundperAcreperInchWEQ",
-                     "total_nitrogen_yield_poundperAcreperInchWEQ", "organic_nitrogen_yield_poundperAcreperInchWEQ") 
-
+                     "runoff_volume_cubicfootperAcre", "suspended_sediment_yield_mgL", 
+                     "chloride_yield_mgL", "no2_no3n_yield_mgL", 
+                     "ammonium_n_yield_mgL" , "tkn_unfiltered_yield_mgL", 
+                     "orthophosphate_yield_mgL", "tp_unfiltered_yield_mgL", 
+                     "total_nitrogen_yield_mgL", "organic_nitrogen_yield_mgL")
+                     
 predictors_all <- c("weq" , "duration", "Ievent", "I5", "I10", "I15", "I30", "I60",          
                     "energy_m1", "erosivity_m1", "energy_m2", "erosivity_m2", 
                     "ARFdays1", "ARFdays2" , "ARFdays7"  , "ARFdays14", "sin_sdate", "cos_sdate",
@@ -119,7 +119,7 @@ states <- c("IN", "MI", "WI", "OH", "NY")
 
 predictors_list <- list()
 
-site_nu <- 15
+site_nu <- 1
 # for (site_nu in 15:20){
 for (site_nu in 1:length(all_sites)){
   site_name <- all_sites[site_nu]

@@ -1,5 +1,5 @@
 
-
+library(soiltexture)
 # ############################################
 # Plot soil data for 2016
 # ###########################################
@@ -10,6 +10,11 @@ soil_df <- readRDS(file=file_out(file.path(path_to_data, 'soil', 'cleaned_data',
 soil_0_15 <- readRDS(file=file_out(file.path(path_to_data, 'soil', 'cleaned_data', 'Soil2016_0_to_15cm.rds')))
 
 
+png(file_out(file.path(path_to_results, "Figures", "Soil", "Spring2016_TextureTriangle.png")), res=400, width=7, height=7, units='in')
+
+TT.plot(tri.data=data.frame(soil_0_15), class.sys='USDA.TT', css.names=c('P_Clay', 'P_Silt', 'P_Sand'), col='red', main='')
+
+dev.off()
 
 soilvars <- names(soil_df3)[5:ncol(soil_df3)]
 

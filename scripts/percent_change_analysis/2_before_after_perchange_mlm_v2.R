@@ -265,12 +265,17 @@ for (i in 1:(length(responses))) {
   #Calcualte median absolute deivation (mad) among all events (error bars)
   
   
-  perdiff.mean = (10^predict.table.before$mean - 10^predict.table.after$mean)/
-    (10^predict.table.before$mean + 10^predict.table.after$mean)*200
-  perdiff.median = (10^predict.table.before$quantile..0.5_before -
-                      10^predict.table.after$quantile..0.5_after)/
-    (10^predict.table.before$quantile..0.5_before +
-       10^predict.table.after$quantile..0.5_after)*200
+  # perdiff.mean = (10^predict.table.before$mean - 10^predict.table.after$mean)/
+  #   (10^predict.table.before$mean + 10^predict.table.after$mean)*200
+  # perdiff.median = (10^predict.table.before$quantile..0.5_before -
+  #                     10^predict.table.after$quantile..0.5_after)/
+  #   (10^predict.table.before$quantile..0.5_before +
+  #      10^predict.table.after$quantile..0.5_after)*200
+  
+  perdiff.mean = 100*(10^predict.table.after$mean - 10^predict.table.before$mean)/(10^predict.table.before$mean)
+  
+  perdiff.median = 100*(10^predict.table.after$quantile..0.5_after - 10^predict.table.before$quantile..0.5_before)/
+    (10^predict.table.before$quantile..0.5_before)
   
   mean_perdiff <- mean(perdiff.mean)
   sd_perdiff <- sd(perdiff.mean)
@@ -439,7 +444,7 @@ median.per.change.allvars <- ggplot(per.change.tableout[per.change.tableout$mode
   geom_errorbar(aes(ymin=lwr, ymax=upr), position=position_dodge(width=.5), width=.3) +
   geom_point(aes(y=fit), position=position_dodge(width=.5), size=3, shape=18) +
   theme_bw() +
-  labs(y='median percent reduction per storm event') +
+  labs(y='median percent change per storm event') +
   theme(axis.title.y=element_blank()) + 
   coord_flip() +
   theme(legend.position='bottom',

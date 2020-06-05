@@ -4,6 +4,7 @@ source('scripts/functions/g_legend.R')
 source('scripts/functions/not_all_na.R')
 source('scripts/functions/ScaleYLog10Nice.R')
 
+library(soiltexture)
 
 #load soil quality/health data.
 #Input is one or more csv files from UW-Green Bay and Purdue
@@ -126,6 +127,11 @@ soil_joined <- full_join(soil_df3, soil_fall_summary) %>%
 
 soil_0_15 <- filter(soil_joined, Depth == "0-15") %>%
   select_if(not_all_na) 
+
+#Use soil texture package to determine soil texture
+  TT_grid <- TT.points.in.classes(data.frame(soil_0_15), class.sys='USDA.TT', css.names=c('P_Clay', 'P_Silt', 'P_Sand'))
+  
+  soil_0_15$TT_class <- apply(TT_grid, 1, function(x) names(x)[which(x==1)] )
 
 #save 0 to 15 cm depth for converging with water quality data
 write.csv(soil_df3, file=file_out(file.path(path_to_data, 'soil', 'cleaned_data', 'Soil2016_Spring.csv')), row.names = F)

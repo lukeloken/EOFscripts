@@ -94,12 +94,16 @@ colnames(yield_df) <- yieldvars
 weq_roundup <- data_df2$weq
 weq_roundup[which(weq_roundup==0)]<- 0.01
 
-yieldperweq_df <- data.frame(sapply(data_df[,loadvars], function (x) x/data_df2$Area_acres/weq_roundup))
-colnames(yieldperweq_df) <- paste0(yieldvars, "perInchWEQ")
+#Convert yields to mg per L
+yieldperweq_df <- data.frame(sapply(data_df[,loadvars[-12]], function (x) x/data_df2$Area_acres/weq_roundup*453592/4046*39.37/1000))
+colnames(yieldperweq_df) <- gsub( "poundperAcre", "mgL", yieldvars[-12])
 
 #To convert from cubic foot per acre per inch to cubic meter per cubic meter 39.37/35.3147/4046.86
-yieldperweq_df[,which(grepl('runoff', colnames(yieldperweq_df)))] <- yieldperweq_df[,which(grepl('runoff', colnames(yieldperweq_df)))]*39.37/35.3147/4046.86
-colnames(yieldperweq_df)[which(grepl('runoff', colnames(yieldperweq_df)))] <- 'runoff_cubicmeter_percubicmeterWEQ'
+yieldperweq_df$runoff_cubicmeter_percubicmeterWEQ <- data_df[,loadvars[12]]/data_df2$Area_acres/weq_roundup*39.37/35.3147/4046.86
+
+#To convert from cubic foot per acre per inch to cubic meter per cubic meter 39.37/35.3147/4046.86
+# yieldperweq_df[,which(grepl('runoff', colnames(yieldperweq_df)))] <- yieldperweq_df[,which(grepl('runoff', colnames(yieldperweq_df)))]/35.3147/453592
+# colnames(yieldperweq_df)[which(grepl('runoff', colnames(yieldperweq_df)))] <- 'runoff_cubicmeter_percubicmeterWEQ'
 
 yieldperweqvars<-names(yieldperweq_df)
 

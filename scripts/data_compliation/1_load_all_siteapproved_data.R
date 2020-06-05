@@ -148,7 +148,7 @@ if (identical(badnames, c("no2_no3_n_load_pounds", "total_phosphorus_unfiltered_
   }
   
   data_df <- data_df %>%
-    dplyr::select(-badnames)
+    dplyr::select(-all_of(badnames))
   
   #Calculate concentration using loads and runoff volume
   
@@ -197,7 +197,7 @@ if (identical(badnames, c("no2_no3_n_load_pounds", "total_phosphorus_unfiltered_
     good_name <- var_names[which(var_names %in% concvars)]
     
     data_i <- data_df_withconc %>%
-      select(var_names, -good_name) %>%
+      select(all_of(var_names), -all_of(good_name)) %>%
       mutate_all(as.character) %>%
       bind_cols(data_df_withconc[good_name])
     
@@ -228,7 +228,7 @@ if (identical(badnames, c("no2_no3_n_load_pounds", "total_phosphorus_unfiltered_
       ggtitle(good_name)
     
     data_df_new <- data_df_new %>%
-      select(-var_names) %>%
+      select(-all_of(var_names)) %>%
       bind_cols(data_i_unite[,1:2])
     
   }
@@ -259,10 +259,11 @@ ggplot(data_df_new, aes(y=total_phosphorus_conc_mgL, x=year(storm_start), group=
   geom_boxplot() +
   facet_wrap(~site, scales='free_y') +
   theme(legend.position='bottom', legend.title = element_blank()) +
-  scale_y_log10nice() +
+  scale_y_log10nice(name='TP (mg/L)') +
   labs(x='Year')
 
-                                                                                                                ggplot(data_df_new, aes(y=total_phosphorus_conc_mgL/total_phosphorus_conc_mgL_unite, x=site, group=site, fill=site)) +
+
+ggplot(data_df_new, aes(y=total_phosphorus_conc_mgL/total_phosphorus_conc_mgL_unite, x=site, group=site, fill=site)) +
   geom_jitter(aes(color=site), width= .1, height=0, alpha=.4) + 
   geom_boxplot(aes(group=site), alpha=.6, outlier.shape = NA) +
   # theme(legend.position='bottom') +

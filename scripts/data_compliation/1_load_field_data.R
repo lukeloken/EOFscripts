@@ -40,7 +40,7 @@ str(field_list)
 #Combine all sites into a single data.frame
 field_df <- ldply(field_list, data.frame, .id = "site") %>%
   select(site, calendar_year, water_year2, date, 
-         current_crop, last_year_crop, activity_group, activity, X) %>%
+         current_crop, last_year_crop, activity_group, activity,) %>%
   mutate(site = factor(site)) %>%
   mutate(site = factor(site, rev(levels(site))))
   

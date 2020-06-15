@@ -7,7 +7,7 @@
 path_to_data <- "P:/0301"
 
 #Temporary place while teleworking
-path_to_data <- "C:/copy of P0301/0301"
+# path_to_data <- "C:/copy of P0301/0301"
 
 
 #Currently figures are saved here. This folder needs a subfolder titled "Figures"  

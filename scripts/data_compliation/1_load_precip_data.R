@@ -127,7 +127,7 @@ Rain.uv.combined <- Rain.uv %>%
   bind_rows(df.raw.prep.all) %>%
   distinct() %>%
   arrange(rain_site, pdate) %>%
-  drop_na(rain)
+  filter(!is.na(rain))
 
 
 #***#***#***#***#***#***#***#***#***#***#***#***#***#***#***#***#
@@ -186,7 +186,11 @@ StormSummary_df$state <- str_split(StormSummary_df$site, "-", simplify = TRUE)[,
 
 
 #***#***#***#***#***#***#***#***#***#***#***#***#***#***#***#***#
-# 7. Figures and save output 
+# 7. Save output and figures 
+
+#Save object
+saveRDS(StormSummary_df, file.path(path_to_data, 'compiled_data', 'rain', 'Compiled_Rain_Data.rds'))
+
 
 #Timeseries figures
 rain_allsites.TS <- ggplot(StormSummary_df, aes(x=StartDate, xend=StartDate, yend=0, y=rain)) +
@@ -219,8 +223,6 @@ print(rain_allsites.hist)
 
 ggsave(file.path(path_to_results, 'Figures', 'Rain', 'Rain_Histograms_stormsizes_bothsources.png'), rain_allsites.hist, height=12, width = 6, units='in')
 
-#Save object
-saveRDS(StormSummary_df, file.path(path_to_data, 'compiled_data', 'rain', 'Compiled_Rain_Data.rds'))
 
 
 #End

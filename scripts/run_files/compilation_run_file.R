@@ -29,6 +29,10 @@ source('scripts/data_compliation/1_load_field_data.R')
 #load master R files
 source('scripts/data_compliation/1_load_master_data.R')
 
+#load precip data
+#Takes multiple hours and needs network
+# source('scripts/data_compliation/1_load_precip_data.R')
+
 #summarize water quality data
 source('scripts/data_compliation/2_summarize_data.R')
 

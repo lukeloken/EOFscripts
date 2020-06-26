@@ -1,7 +1,7 @@
 
 #Loop through all site folders and load edge of field runoff data
 
-library(anytime)
+# library(anytime)
 
 #This is where the data live
 print(path_to_data)
@@ -75,7 +75,12 @@ for (file_nu in 1:length(approved_files)){
 #Combine all sites into a single data.frame
 data_df <- ldply(allsites_list, data.frame, .id = "site") 
 
-goodvars <- c('suspended_sediment_load_pounds', 
+# #########################################################
+# unite columns that have the same data, but different names
+# #########################################################
+
+#Preferred load names
+loadvars <- c('suspended_sediment_load_pounds', 
               'chloride_load_pounds',
               'no2_no3n_load_pounds', 
               'ammonium_n_load_pounds',
@@ -87,6 +92,7 @@ goodvars <- c('suspended_sediment_load_pounds',
               'doc_load_pounds', 
               'toc_load_pounds')
 
+#Preferred concentration names
 concvars <- c('suspended_sediment_conc_mgL', 
               'chloride_conc_mgL',
               'no2_no3_n_conc_mgL', 
@@ -99,150 +105,127 @@ concvars <- c('suspended_sediment_conc_mgL',
               'doc_conc_mgL',
               'toc_conc_mgL')
 
-goodcolumns <- which(names(data_df) %in% goodvars)
-
-loadcolumns <- which(grepl("load", names(data_df), ignore.case=T))
-badcolumns <- setdiff(loadcolumns, goodcolumns)
-badnames<- names(data_df)[badcolumns]
-
-#Combine columns that are runoff
-# runoffcolumns <- which(grepl("runoff", names(data_df), ignore.case=T))
-# names(data_df)[runoffcolumns]
-# 
-# data_df$runoff_volume[which(is.na(data_df$runoff_volume))] <- data_df$storm_runoff_cubic_feet[which(is.na(data_df$runoff_volume))]
-
-# head(data_df)
-# str(data_df)
 
 
 
-if (identical(badnames, c("no2_no3_n_load_pounds", "total_phosphorus_unfiltered_load_pounds",
-                          "total_nitrogen_computed_load_pounds", "organic_nitrogen_computed_load_pounds",
-                          "Suspended.Sediment.Load..pounds", "Chloride.Load..pounds",
-                          "NO2.NO3.N..Load..pounds", "Ammonium..N..Load..pounds",
-                          "TKN.Unfiltered.Load..pounds", "Dissolved.Reactive.Phosphorus.Load..pounds",
-                          "TP.Unfiltered.Load..pounds", "Total.Nitrogen.Load..in.pounds",
-                          "Organic.Nitrogen.Load..pounds", "total_nitrogen_load_in_pounds")
-)==FALSE) {
+#Identify multiple columns for each variable and data type
+sediment_names <- names(data_df)[grepl('sediment', names(data_df), ignore.case=T)]
+chloride_names <- names(data_df)[grepl('chloride', names(data_df), ignore.case=T)]
+nitrate_names <- names(data_df)[grepl('no3', names(data_df), ignore.case=T)]
+ammonium_names <- names(data_df)[grepl('Ammonium', names(data_df), ignore.case=T)]
+TKN_names <- names(data_df)[grepl('tkn', names(data_df), ignore.case=T)]
+SRP_names <- unique(c(names(data_df)[grepl('ortho', names(data_df), ignore.case=T)], 
+                      names(data_df)[grepl('Reactive.Phosphorus', names(data_df), ignore.case=T)]))
+TP_names <- unique(c(names(data_df)[grepl('tp', names(data_df), ignore.case=T)], 
+                     names(data_df)[grepl('total_phosphorus', names(data_df), ignore.case=T)]))
+TN_names <- unique(c(names(data_df)[grepl('total_nitrogen', names(data_df), ignore.case=T)], 
+                     names(data_df)[grepl('Total.Nitrogen', names(data_df), ignore.case=T)]))
+organicN_names <-unique(c(names(data_df)[grepl('organic_nitrogen', names(data_df), ignore.case=T)], 
+                          names(data_df)[grepl('organic.nitrogen', names(data_df), ignore.case=T)]))
+DOC_names <- names(data_df)[grepl('doc', names(data_df), ignore.case=T)]
+TOC_names <- names(data_df)[grepl('toc', names(data_df), ignore.case=T)]
+
+#Combine names into a list. The order of this list must match the good column names listed above
+names_list <- list(sediment_names, chloride_names, nitrate_names, ammonium_names, TKN_names,  SRP_names,
+                   TP_names, TN_names, organicN_names, DOC_names, TOC_names)
+
+#Load and concentration
+load_names <- unique(c(names(data_df)[grepl('Load', names(data_df), ignore.case=T)],
+                       names(data_df)[grepl('lound', names(data_df), ignore.case=T)]))
+conc_names <- names(data_df)[grepl('mg', names(data_df), ignore.case=T)]
+
+
+#Loop through each variable and combine concentration and load data
+var_i = 1
+data_df_new <- data_df
+for (var_i in 1:length(names_list)){
   
-  stop("check column names in '1_load_all_siteapproved_data.R'. Trying to merge columns, and more columns need to be identified")
+  #Identify concentration names to merge/compare
+  conc_names_i <- intersect(conc_names, names_list[[var_i]])
+  good_conc_name <- concvars[var_i]
   
-} else {
+  data_conc_i <- data_df %>%
+    select(all_of(conc_names_i)) %>%
+    mutate_all(as.character)
   
+  data_conc_i_unite <- unite(data_conc_i, col=merge_var, 1:(length(conc_names_i)), na.rm=T)
   
-  replacenames <- c("no2_no3n_load_pounds", "tp_unfiltered_load_pounds", 
-                    "total_nitrogen_load_pounds", "organic_nitrogen_load_pounds", 
-                    "suspended_sediment_load_pounds", "chloride_load_pounds",
-                    "no2_no3n_load_pounds", "ammonium_n_load_pounds",
-                    "tkn_unfiltered_load_pounds", "orthophosphate_load_pounds",
-                    "tp_unfiltered_load_pounds", "total_nitrogen_load_pounds",
-                    "organic_nitrogen_load_pounds", "total_nitrogen_load_pounds")
+  names(data_conc_i_unite)[1] <- as.character(good_conc_name)
   
+  #For values with less than symbol, assign a value of half of MDL
+  Below_mdl_conc <- grepl("<", data_conc_i_unite[,1])
+  data_conc_i_unite[Below_mdl_conc,1] <- as.numeric(gsub("<", "", data_conc_i_unite[Below_mdl_conc,1]))/2
   
-  var=1
-  for (var in 1:length(badnames)){
-    NAs <- which(is.na(data_df[,replacenames[var]]))
-    data_df[,replacenames[var]][NAs] <- data_df[,badnames[var]][NAs]
-    # print(paste0("Replaced ", toString(length(NAs)), " NAs in col ", toString(loadvars[var]), " with col ", toString(badvars[var])))
-    print(paste0("Column ", toString(replacenames[var]), " contained NAs. Replaced with ", toString(length(NAs)), " ",  toString(badnames[var])))
-  }
+  data_conc_i_unite <- mutate_at(data_conc_i_unite, good_conc_name, as.numeric) %>%
+    mutate(site_conc = data_df$site)
   
-  data_df <- data_df %>%
-    dplyr::select(-all_of(badnames))
+  #merge load
+  load_names_i <- intersect(load_names, names_list[[var_i]])
+  good_load_name <- loadvars[var_i]
   
-  #Calculate concentration using loads and runoff volume
+  data_load_i <- data_df %>%
+    select(all_of(load_names_i)) %>%
+    mutate_all(as.character) 
   
-  conc_df <- data.frame(sapply(data_df[,goodvars[-12]], function (x) x/data_df$runoff_volume*453592/28.3168))
-  conc_df <- signif(conc_df, 4)
-  colnames(conc_df) <- concvars
+  data_load_i_unite <- unite(data_load_i, col=merge_var, 1:(length(load_names_i)), na.rm=T)
   
-  # data_df_withconc <- bind_cols(data_df, conc_df) %>%
-  #   filter(runoff_volume>0, is.finite(runoff_volume))
+  names(data_load_i_unite)[1] <- as.character(good_load_name)
   
-  data_df_withconc <- bind_cols(data_df, conc_df)
+  #For values with less than symbol, assign a value of half of MDL
+  Below_mdl_load <- grepl("<", data_load_i_unite[,1])
+  data_load_i_unite[Below_mdl_load,1] <- as.numeric(gsub("<", "", data_load_i_unite[Below_mdl_load,1]))/2
   
-  
-  #Manually identify multiple columns for each variable and unite
-  sediment_names <- names(data_df_withconc)[grepl('sediment', names(data_df_withconc), ignore.case=T)]
-  ammonium_names <- names(data_df_withconc)[grepl('Ammonium', names(data_df_withconc), ignore.case=T)]
-  nitrate_names <- names(data_df_withconc)[grepl('no3', names(data_df_withconc), ignore.case=T)]
-  TKN_names <- names(data_df_withconc)[grepl('tkn', names(data_df_withconc), ignore.case=T)]
-  organicN_names <-unique(c(names(data_df_withconc)[grepl('organic_nitrogen', names(data_df_withconc), ignore.case=T)], 
-                            names(data_df_withconc)[grepl('organic.nitrogen', names(data_df_withconc), ignore.case=T)]))
-  TN_names <- unique(c(names(data_df_withconc)[grepl('total_nitrogen', names(data_df_withconc), ignore.case=T)], 
-                       names(data_df_withconc)[grepl('Total.Nitrogen', names(data_df_withconc), ignore.case=T)]))
-  TP_names <- unique(c(names(data_df_withconc)[grepl('tp', names(data_df_withconc), ignore.case=T)], 
-                       names(data_df_withconc)[grepl('total_phosphorus', names(data_df_withconc), ignore.case=T)]))
-  SRP_names <- unique(c(names(data_df_withconc)[grepl('ortho', names(data_df_withconc), ignore.case=T)], 
-                        names(data_df_withconc)[grepl('Reactive.Phosphorus', names(data_df_withconc), ignore.case=T)]))
-  chloride_names <- names(data_df_withconc)[grepl('chloride', names(data_df_withconc), ignore.case=T)]
-  DOC_names <- names(data_df_withconc)[grepl('doc', names(data_df_withconc), ignore.case=T)]
-  TOC_names <- names(data_df_withconc)[grepl('toc', names(data_df_withconc), ignore.case=T)]
-  
-  conc_names_list <- list(sediment_names, ammonium_names, nitrate_names, TKN_names, organicN_names, 
-                          TN_names, TP_names, SRP_names, chloride_names, DOC_names, TOC_names)
-  
-  load_names <- names(data_df_withconc)[grepl('Load', names(data_df_withconc), ignore.case=T)]
-  conc_names <- names(data_df_withconc)[grepl('mg', names(data_df_withconc), ignore.case=T)]
-  
-  
-  #Loop through each variable and combine/compare concentration data
-  var_i = 1
-  data_df_new <- data_df_withconc
-  plot_list <- list()
-  for (var_i in 1:length(conc_names_list)){
-    
-    #Identify names to merge/compare
-    var_names <- intersect(conc_names, conc_names_list[[var_i]])
-    good_name <- var_names[which(var_names %in% concvars)]
-    
-    data_i <- data_df_withconc %>%
-      select(all_of(var_names), -all_of(good_name)) %>%
-      mutate_all(as.character) %>%
-      bind_cols(data_df_withconc[good_name])
-    
-    data_i_unite <- unite(data_i, col=merge_var, 1:(length(var_names)-1), na.rm=T)
-    
-    names(data_i_unite)[1] <- as.character(paste0(good_name, '_unite'))
-    
-    #For values with less than symbol, assign a value of half of MDL
-    Below_mdl <- grepl("<", data_i_unite[,1])
-    data_i_unite[Below_mdl,1] <- as.numeric(gsub("<", "", data_i_unite[Below_mdl,1]))/2
-    
-    data_i_unite <- mutate_all(data_i_unite, as.numeric) %>%
-      mutate(site = data_df_withconc$site)
-    
-    # Ratio <- data_i_unite[,1] / data_i_unite[,2]
-    # Diff <- data_i_unite[,1] - data_i_unite[,2]
-    # 
-    # plot(Diff, main=good_name)
-    # plot(Ratio, main=good_name)
-    
-    #Compare calculated (from loads) with united column
-    plot_list[[var_i]] <- ggplot(data_i_unite, aes_string(x=names(data_i_unite)[1], y=names(data_i_unite)[2])) +
-      geom_point(aes(col=site), alpha=.5, size=2) +
-      geom_abline() +
-      theme_bw() +
-      scale_x_log10nice(name='merged concentrations') +
-      scale_y_log10nice(name='calculated from load') +
-      ggtitle(good_name)
-    
-    data_df_new <- data_df_new %>%
-      select(-all_of(var_names)) %>%
-      bind_cols(data_i_unite[,1:2])
-    
-  }
+  data_load_i_unite <- mutate_all(data_load_i_unite, as.numeric) %>%
+    mutate(site_load = data_df$site)
   
   
+  # Ratio <- data_i_unite[,1] / data_i_unite[,2]
+  # Diff <- data_i_unite[,1] - data_i_unite[,2]
+  # 
+  # plot(Diff, main=good_name)
+  # plot(Ratio, main=good_name)
   
-  saveRDS(data_df_new, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_approved_data.rds" ))))
-  
-  write.csv(data_df_new, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_approved_data.csv" ))), row.names=F)
-  
-  merged_sites <- data.frame(sites = as.character(unique(data_df_new$site)), stringsAsFactors = F)
-  merged_sites <- arrange(merged_sites, sites)
+  #Compare calculated (from loads) with united column
+  # plot_list[[var_i]] <- ggplot(data_i_unite, aes_string(x=names(data_i_unite)[1], y=names(data_i_unite)[2])) +
+  #   geom_point(aes(col=site), alpha=.5, size=2) +
+  #   geom_abline() +
+  #   theme_bw() +
+  #   scale_x_log10nice(name='merged concentrations') +
+  #   scale_y_log10nice(name='calculated from load') +
+  #   ggtitle(good_name)
+  # 
+  data_df_new <- data_df_new %>%
+    select(-all_of(c(conc_names_i, load_names_i))) %>%
+    bind_cols(data_load_i_unite[,1:2]) %>%
+    bind_cols(data_conc_i_unite[,1:2]) %>%
+    select(-site_load, -site_conc)
   
 }
+
+head(data_df_new)
+
+
+
+#Calculate concentration using loads and runoff volume
+
+conc_df <- data.frame(sapply(data_df_new[,loadvars], function (x) x/data_df_new$runoff_volume*453592/28.3168))
+conc_df <- signif(conc_df, 4)
+colnames(conc_df) <- paste0(concvars, '_calculated')
+
+data_df_withconc <- bind_cols(data_df_new, conc_df) %>%
+  filter(runoff_volume>0, is.finite(runoff_volume))
+
+data_df_withconc <- bind_cols(data_df_new, conc_df)
+
+
+
+saveRDS(data_df_new, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_approved_data.rds" ))))
+
+write.csv(data_df_new, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_approved_data.csv" ))), row.names=F)
+
+merged_sites <- data.frame(sites = as.character(unique(data_df_new$site)), stringsAsFactors = F)
+merged_sites <- arrange(merged_sites, sites)
+
 
 if (nrow(merged_sites) != 20){
   warning(paste0(toString(nrow(merged_sites)), " sites in dataset. Should be 20"))
@@ -252,10 +235,87 @@ if (nrow(merged_sites) != 20){
 }
 
 
+calc_vars <- names(data_df_withconc)[grepl('_calculated', names(data_df_withconc))]
 
-plot_list
 
-ggplot(data_df_new, aes(y=total_phosphorus_conc_mgL, x=year(storm_start), group=factor(year(storm_start)), fill=factor(year(storm_start)))) +
+# Compare calculated (from loads) with united column
+var_i <- 7
+plot_list <- plot_list2 <- list()
+
+for (var_i in 1:length(concvars)) {
+
+  sig_digits <- ifelse (var_i == 1, 1, 
+                        ifelse(var_i %in% c(2,10,11), 0.1,
+                               ifelse(var_i %in% c(3,4,5,8,9), 0.01,
+                                      ifelse(var_i %in% c(6,7), 0.001, NA)))) *5
+  
+  data_df_withconc_i <- data_df_withconc %>%
+    select(site, unique_storm_number, all_of(c(concvars[var_i], calc_vars[var_i]))) %>%
+    mutate(ratio = data_df_withconc[,concvars[var_i]] / data_df_withconc[,calc_vars[var_i]],
+           diff = abs(data_df_withconc[,concvars[var_i]] - data_df_withconc[,calc_vars[var_i]])) %>%
+    mutate(group = case_when(ratio < 0.9 ~ 'low',
+                             ratio > 1.1 ~ 'high',
+                             ratio >= 0.9 & ratio <= 1.1 ~ 'good', 
+                             is.na(ratio) ~ 'NA'),
+           label = case_when(group == 'good' ~ "",
+                             group %in% c('low', 'high', 'NA') ~ unique_storm_number)) %>%
+  mutate(group2 = case_when(diff > sig_digits ~ 'high',
+                           diff <= sig_digits ~ 'good',
+                           is.na(diff) ~ 'NA'),
+         label2 = case_when(group2 == 'good' ~ "",
+                           group2 %in% c('high', 'NA') ~ unique_storm_number))
+
+ 
+    
+  plot_list[[var_i]] <- ggplot(data_df_withconc_i, 
+                               aes_string(x=concvars[var_i], y=calc_vars[var_i])) +
+    facet_wrap(~site, scales='free') +
+    geom_point(aes(col=site), alpha=.6, size=2) +
+    geom_text_repel(aes(label = label), color='black',
+                    alpha=.5, segment.size=.5, size=3) +
+    geom_abline() +
+    theme_bw() +
+    scale_x_log10nice(name='reported concentrations') +
+    scale_y_log10nice(name='calculated from load') +
+    ggtitle(concvars[var_i]) +
+    theme(legend.position = 'none')
+  
+  print(plot_list[[var_i]])
+  
+  ggsave(file.path(path_to_results, 'Figures', 'ConcentrationTesting', paste0(concvars[var_i], '.png')),
+         plot_list[[var_i]], height=10, width=10, units='in')
+  
+  
+  plot_list2[[var_i]] <- ggplot(data_df_withconc_i, aes(y=diff, x=site, group=site, fill=site)) +
+    geom_hline(yintercept = sig_digits) + 
+    geom_jitter(aes(color=site), width= .1, height=0, alpha=.4) + 
+    # geom_boxplot(aes(group=site), alpha=.6, outlier.shape = NA) +
+    scale_y_sqrt(limits=c(0,NA), name='abs difference between calculated and reported') +
+    # scale_y_continuous(limits=c(0,5)) +
+    geom_text_repel(aes(label = label2, color = site),
+                    alpha=.5, segment.size=.5, size=3) +
+    theme_bw() +
+    theme(legend.position='none', axis.text.x = element_text(angle=90),
+          axis.title.x = element_blank()) +
+    ggtitle(concvars[var_i])
+  
+  print(plot_list2[[var_i]])
+  
+  ggsave(file.path(path_to_results, 'Figures', 'ConcentrationTesting', paste0(concvars[var_i], '_Diff.png')),
+         plot_list2[[var_i]], height=5, width=10, units='in')
+  
+  
+}
+
+
+plot_list[[2]]
+
+
+
+
+
+
+ggplot(data_df_withconc, aes(y=total_phosphorus_conc_mgL, x=year(storm_start), group=factor(year(storm_start)), fill=factor(year(storm_start)))) +
   geom_boxplot() +
   facet_wrap(~site, scales='free_y') +
   theme(legend.position='bottom', legend.title = element_blank()) +
@@ -263,12 +323,20 @@ ggplot(data_df_new, aes(y=total_phosphorus_conc_mgL, x=year(storm_start), group=
   labs(x='Year')
 
 
-ggplot(data_df_new, aes(y=total_phosphorus_conc_mgL/total_phosphorus_conc_mgL_unite, x=site, group=site, fill=site)) +
+ggplot(data_df_withconc, aes(y=total_phosphorus_conc_mgL/total_phosphorus_conc_mgL_calculated, x=site, group=site, fill=site)) +
   geom_jitter(aes(color=site), width= .1, height=0, alpha=.4) + 
   geom_boxplot(aes(group=site), alpha=.6, outlier.shape = NA) +
   # theme(legend.position='bottom') +
   # scale_y_log10nice()
-  scale_y_continuous(limits=c(0,5)) +
+  # scale_y_continuous(limits=c(0,5)) +
+  theme_bw()
+
+ggplot(data_df_withconc, aes(y=abs(total_phosphorus_conc_mgL-total_phosphorus_conc_mgL_calculated), x=site, group=site, fill=site)) +
+  geom_jitter(aes(color=site), width= .1, height=0, alpha=.4) + 
+  # geom_boxplot(aes(group=site), alpha=.6, outlier.shape = NA) +
+  # theme(legend.position='bottom') +
+  scale_y_sqrt() +
+  # scale_y_continuous(limits=c(0,5)) +
   theme_bw()
 
 

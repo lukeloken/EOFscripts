@@ -1,9 +1,15 @@
 
 library(stringr)
 library(cowplot)
+library(ggrepel)
+
 
 #Site data
 master_beforeafter_df <- readRDS(file.path(path_to_data, 'compiled_data', 'rain', 'Compiled_Masters.rds'))
+
+#Data ready for modeling
+data_df <- readRDS(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_model_data.rds" )))
+
 
 
 #Rain data
@@ -76,9 +82,6 @@ ggsave(file.path(path_to_results, 'Figures', 'Rain', 'Rain_Histograms_stormsizes
 
 
 #Link rain with storms
-
-
-
 all_sites <- master_beforeafter_df$site
 rain_new_list <- flow_new_list <- list()
 site_nu <- 4
@@ -206,6 +209,7 @@ flow_new_df <- bind_rows(flow_new_list, .id = site_name) %>%
   filter(!is.na(storm_start) & !is.na(runoff_volume))
 
 
+
 ggplot(rain_new_df,aes(x=rain, fill=DidItFlow, col=DidItFlow)) + 
   # geom_density(alpha=0.25) +
   # geom_freqpoly(alpha=.5, bins=20, size=2) +
@@ -248,3 +252,54 @@ ggplot(filter(flow_new_df, type=='SW'),aes(x=runoff_volume, fill=DidItRain, col=
   theme(legend.position = 'bottom')
 
 
+
+
+
+#Look at events that are missing rain or flow
+
+flow_missingrain_df <- flow_new_df %>%
+  filter(DidItRain == 'No') %>%
+  arrange(site, storm_start)
+
+missingrain_summary <- flow_missingrain_df %>%
+  group_by(site, frozen, estimated, exclude) %>%
+  summarize(n_raw=n()) 
+
+data.frame(missingrain_summary)
+
+#From model data. Storms were combined and ready for random forest analysis
+flow_missingrain_df_model <- data_df  %>%
+  filter(rain == 0) %>%
+  arrange(site, storm_start) %>%
+  mutate(weq_positive = case_when(weq>0 ~ 'TRUE', weq==0 ~ 'FALSE'))
+
+missingrain_summary_model <- flow_missingrain_df_model %>%
+  group_by(site, frozen) %>%
+  summarize(n_model=n())
+
+
+missingrain_combined <- missingrain_summary %>%
+  filter(exclude==0, estimated==0) %>%
+  group_by(site, frozen) %>%
+  summarize(n_raw=sum(n_raw, na.rm=T)) %>%
+  ungroup() %>%
+  select(site, frozen, n_raw) %>%
+  full_join(missingrain_summary_model, by=c('site', 'frozen'))
+
+write.csv(file =file.path(path_to_data, 'compiled_data', 'storm_event_loads', 'storm_event_loads_missing_rain_model.csv'), flow_missingrain_df_model, row.names=F)
+
+write.csv(file =file.path(path_to_data, 'compiled_data', 'storm_event_loads', 'storm_event_loads_missing_rain_raw.csv'), flow_missingrain_df, row.names=F)
+
+setdiff(unique(flow_missingrain_df_model[c('site', 'unique_storm_number')]), unique(flow_missingrain_df[c('site', 'unique_storm_number')]))
+
+
+rainless_TS <- ggplot(flow_missingrain_df_model, aes(x=storm_start, y=site, col=frozen, label=unique_storm_number)) +
+  geom_point(aes(shape=weq_positive)) +
+  scale_shape_manual(values = c(16,1)) + 
+  geom_text_repel(size=3, alpha=1, segment.size=.5) +
+  theme_bw() +
+  theme(legend.position = 'bottom') +
+  ggtitle('Flow events with zero rain. Unique storm number noted')
+
+ggsave(filename = file.path(path_to_results, 'Figures', 'Rain', 'FlowEventsMissingRain.png'), rainless_TS)
+  

@@ -105,6 +105,9 @@ concvars <- c('suspended_sediment_conc_mgL',
               'doc_conc_mgL',
               'toc_conc_mgL')
 
+flagvars <- c("flag_suspended_sediment", "flag_chloride", "flag_no2_no3n", 
+              "flag_ammonium_n", "flag_tkn_unfiltered", "flag_orthophosphate",
+              "flag_tp_unfiltered", "flag_tn", "flag_orgN", "flag_doc", "flag_toc" )
 
 
 
@@ -133,12 +136,34 @@ names_list <- list(sediment_names, chloride_names, nitrate_names, ammonium_names
 load_names <- unique(c(names(data_df)[grepl('Load', names(data_df), ignore.case=T)],
                        names(data_df)[grepl('lound', names(data_df), ignore.case=T)]))
 conc_names <- names(data_df)[grepl('mg', names(data_df), ignore.case=T)]
+flag_names <- names(data_df)[grepl('flag', names(data_df), ignore.case=T)]
 
 
 #Loop through each variable and combine concentration and load data
 var_i = 1
 data_df_new <- data_df
 for (var_i in 1:length(names_list)){
+  
+  data_flag_i_unite <- data_flag_i <- '.dplyr'
+  
+  #find flags
+  flag_names_i <- intersect(flag_names, names_list[[var_i]])
+  
+  if (length(flag_names_i)>0) {
+  
+  data_flag_i <- data_df %>%
+    select(all_of(flag_names_i)) %>%
+    mutate_all(as.character)
+  
+  data_flag_i_unite <- unite(data_flag_i, col=merge_var, 1:(length(flag_names_i)), na.rm=T, sep='| ')
+  
+  names(data_flag_i_unite)[1] <- as.character(flagvars[var_i])
+  } else { 
+    data_flag_i_unite <- data.frame(rep("", nrow(data_df)))
+    names(data_flag_i_unite)[1] <- as.character(flagvars[var_i])
+  }
+  
+  
   
   #Identify concentration names to merge/compare
   conc_names_i <- intersect(conc_names, names_list[[var_i]])
@@ -151,13 +176,29 @@ for (var_i in 1:length(names_list)){
   data_conc_i_unite <- unite(data_conc_i, col=merge_var, 1:(length(conc_names_i)), na.rm=T)
   
   names(data_conc_i_unite)[1] <- as.character(good_conc_name)
+
+  data_conc_i_unite <- data_conc_i_unite %>%
+    bind_cols(data.frame('site_conc' = data_df[,c('site')])) %>%
+    bind_cols(data_flag_i_unite)
+  
+  data_conc_i_unite$used_conc_numeric <- as.numeric(gsub("<", "", data_conc_i_unite[,1]))
   
   #For values with less than symbol, assign a value of half of MDL
-  Below_mdl_conc <- grepl("<", data_conc_i_unite[,1])
-  data_conc_i_unite[Below_mdl_conc,1] <- as.numeric(gsub("<", "", data_conc_i_unite[Below_mdl_conc,1]))/2
+  Below_mdl_conc <- grepl("<", data_conc_i_unite[,3])
+  data_conc_i_unite$used_conc_numeric[Below_mdl_conc] <- data_conc_i_unite$used_conc_numeric[Below_mdl_conc]/2
+
+
+  names(data_conc_i_unite)[which(names(data_conc_i_unite)=='used_conc_numeric')] <- 
+    paste0(good_conc_name, '_used')
+
+  # data_conc_i_unite <- data_conc_i_unite 
+  # 
+  # data_conc_i_unite$reported_conc_numeric_half <-   data_conc_i_unite$reported_conc_numeric / 2
   
-  data_conc_i_unite <- mutate_at(data_conc_i_unite, good_conc_name, as.numeric) %>%
-    mutate(site_conc = data_df$site)
+  #For values with less than symbol, assign a value of half of MDL
+  # Below_mdl_conc <- grepl("<", data_conc_i_unite[,1])
+  # data_conc_i_unite[Below_mdl_conc,1] <- as.numeric(gsub("<", "", data_conc_i_unite[Below_mdl_conc,1]))/2
+
   
   #merge load
   load_names_i <- intersect(load_names, names_list[[var_i]])
@@ -170,10 +211,6 @@ for (var_i in 1:length(names_list)){
   data_load_i_unite <- unite(data_load_i, col=merge_var, 1:(length(load_names_i)), na.rm=T)
   
   names(data_load_i_unite)[1] <- as.character(good_load_name)
-  
-  #For values with less than symbol, assign a value of half of MDL
-  Below_mdl_load <- grepl("<", data_load_i_unite[,1])
-  data_load_i_unite[Below_mdl_load,1] <- as.numeric(gsub("<", "", data_load_i_unite[Below_mdl_load,1]))/2
   
   data_load_i_unite <- mutate_all(data_load_i_unite, as.numeric) %>%
     mutate(site_load = data_df$site)
@@ -195,14 +232,14 @@ for (var_i in 1:length(names_list)){
   #   ggtitle(good_name)
   # 
   data_df_new <- data_df_new %>%
-    select(-all_of(c(conc_names_i, load_names_i))) %>%
+    select(-all_of(c(conc_names_i, load_names_i, flag_names_i))) %>%
     bind_cols(data_load_i_unite[,1:2]) %>%
-    bind_cols(data_conc_i_unite[,1:2]) %>%
+    bind_cols(data_conc_i_unite[,1:4]) %>%
     select(-site_load, -site_conc)
   
 }
 
-head(data_df_new)
+# head(data_df_new)
 
 
 
@@ -236,10 +273,11 @@ if (nrow(merged_sites) != 20){
 
 
 calc_vars <- names(data_df_withconc)[grepl('_calculated', names(data_df_withconc))]
+used_vars <- names(data_df_withconc)[grepl('_used', names(data_df_withconc))]
 
 
 # Compare calculated (from loads) with united column
-var_i <- 7
+var_i <- 1
 plot_list <- plot_list2 <- list()
 
 for (var_i in 1:length(concvars)) {
@@ -249,10 +287,12 @@ for (var_i in 1:length(concvars)) {
                                ifelse(var_i %in% c(3,4,5,8,9), 0.01,
                                       ifelse(var_i %in% c(6,7), 0.001, NA)))) *5
   
-  data_df_withconc_i <- data_df_withconc %>%
-    select(site, unique_storm_number, all_of(c(concvars[var_i], calc_vars[var_i]))) %>%
-    mutate(ratio = data_df_withconc[,concvars[var_i]] / data_df_withconc[,calc_vars[var_i]],
-           diff = abs(data_df_withconc[,concvars[var_i]] - data_df_withconc[,calc_vars[var_i]])) %>%
+  data_df_withconc_i <- data_df_withconc %>% 
+    select(site, unique_storm_number, all_of(c(used_vars[var_i], 
+                                               calc_vars[var_i], 
+                                               flagvars[var_i]))) %>%
+    mutate(ratio = data_df_withconc[,used_vars[var_i]] / data_df_withconc[,calc_vars[var_i]],
+           diff = abs(data_df_withconc[,used_vars[var_i]] - data_df_withconc[,calc_vars[var_i]])) %>%
     mutate(group = case_when(ratio < 0.9 ~ 'low',
                              ratio > 1.1 ~ 'high',
                              ratio >= 0.9 & ratio <= 1.1 ~ 'good', 
@@ -263,27 +303,30 @@ for (var_i in 1:length(concvars)) {
                            diff <= sig_digits ~ 'good',
                            is.na(diff) ~ 'NA'),
          label2 = case_when(group2 == 'good' ~ "",
-                           group2 %in% c('high', 'NA') ~ unique_storm_number))
+                           group2 %in% c('high', 'NA') ~ unique_storm_number)) %>%
+    mutate(flag_yes = ifelse(grepl('<', data_df_withconc[,flagvars[var_i]]), TRUE, FALSE)) %>%
+    filter(site != 'MI-TL2')
 
  
     
   plot_list[[var_i]] <- ggplot(data_df_withconc_i, 
-                               aes_string(x=concvars[var_i], y=calc_vars[var_i])) +
+                               aes_string(x=used_vars[var_i], y=calc_vars[var_i])) + 
     facet_wrap(~site, scales='free') +
-    geom_point(aes(col=site), alpha=.6, size=2) +
-    geom_text_repel(aes(label = label), color='black',
-                    alpha=.5, segment.size=.5, size=3) +
+    geom_point(aes(fill=site), alpha=.6, size=.5, shape=21, stroke=NA) +
+    geom_text_repel(aes(label = label, colour=flag_yes),
+                    alpha=.5, segment.size=.5, size=3, box.padding = 1) +
+    scale_color_manual(values=c('black', 'red')) + 
     geom_abline() +
     theme_bw() +
-    scale_x_log10nice(name='reported concentrations') +
+    scale_x_log10nice(name='reported concentrations (if flag contains <, halfed value in conc column') +
     scale_y_log10nice(name='calculated from load') +
     ggtitle(concvars[var_i]) +
     theme(legend.position = 'none')
   
-  print(plot_list[[var_i]])
+  # print(plot_list[[var_i]])
   
   ggsave(file.path(path_to_results, 'Figures', 'ConcentrationTesting', paste0(concvars[var_i], '.png')),
-         plot_list[[var_i]], height=10, width=10, units='in')
+         plot_list[[var_i]], height=15, width=15, units='in')
   
   
   plot_list2[[var_i]] <- ggplot(data_df_withconc_i, aes(y=diff, x=site, group=site, fill=site)) +
@@ -299,7 +342,7 @@ for (var_i in 1:length(concvars)) {
           axis.title.x = element_blank()) +
     ggtitle(concvars[var_i])
   
-  print(plot_list2[[var_i]])
+  # print(plot_list2[[var_i]])
   
   ggsave(file.path(path_to_results, 'Figures', 'ConcentrationTesting', paste0(concvars[var_i], '_Diff.png')),
          plot_list2[[var_i]], height=5, width=10, units='in')
@@ -314,31 +357,31 @@ plot_list[[2]]
 
 
 
-
-ggplot(data_df_withconc, aes(y=total_phosphorus_conc_mgL, x=year(storm_start), group=factor(year(storm_start)), fill=factor(year(storm_start)))) +
-  geom_boxplot() +
-  facet_wrap(~site, scales='free_y') +
-  theme(legend.position='bottom', legend.title = element_blank()) +
-  scale_y_log10nice(name='TP (mg/L)') +
-  labs(x='Year')
-
-
-ggplot(data_df_withconc, aes(y=total_phosphorus_conc_mgL/total_phosphorus_conc_mgL_calculated, x=site, group=site, fill=site)) +
-  geom_jitter(aes(color=site), width= .1, height=0, alpha=.4) + 
-  geom_boxplot(aes(group=site), alpha=.6, outlier.shape = NA) +
-  # theme(legend.position='bottom') +
-  # scale_y_log10nice()
-  # scale_y_continuous(limits=c(0,5)) +
-  theme_bw()
-
-ggplot(data_df_withconc, aes(y=abs(total_phosphorus_conc_mgL-total_phosphorus_conc_mgL_calculated), x=site, group=site, fill=site)) +
-  geom_jitter(aes(color=site), width= .1, height=0, alpha=.4) + 
-  # geom_boxplot(aes(group=site), alpha=.6, outlier.shape = NA) +
-  # theme(legend.position='bottom') +
-  scale_y_sqrt() +
-  # scale_y_continuous(limits=c(0,5)) +
-  theme_bw()
-
+# 
+# ggplot(data_df_withconc, aes(y=total_phosphorus_conc_mgL, x=year(storm_start), group=factor(year(storm_start)), fill=factor(year(storm_start)))) +
+#   geom_boxplot() +
+#   facet_wrap(~site, scales='free_y') +
+#   theme(legend.position='bottom', legend.title = element_blank()) +
+#   scale_y_log10nice(name='TP (mg/L)') +
+#   labs(x='Year')
+# 
+# 
+# ggplot(data_df_withconc, aes(y=total_phosphorus_conc_mgL/total_phosphorus_conc_mgL_calculated, x=site, group=site, fill=site)) +
+#   geom_jitter(aes(color=site), width= .1, height=0, alpha=.4) + 
+#   geom_boxplot(aes(group=site), alpha=.6, outlier.shape = NA) +
+#   # theme(legend.position='bottom') +
+#   # scale_y_log10nice()
+#   # scale_y_continuous(limits=c(0,5)) +
+#   theme_bw()
+# 
+# ggplot(data_df_withconc, aes(y=abs(total_phosphorus_conc_mgL-total_phosphorus_conc_mgL_calculated), x=site, group=site, fill=site)) +
+#   geom_jitter(aes(color=site), width= .1, height=0, alpha=.4) + 
+#   # geom_boxplot(aes(group=site), alpha=.6, outlier.shape = NA) +
+#   # theme(legend.position='bottom') +
+#   scale_y_sqrt() +
+#   # scale_y_continuous(limits=c(0,5)) +
+#   theme_bw()
+# 
 
 
 # 

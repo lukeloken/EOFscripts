@@ -66,6 +66,9 @@ field_df$current_crop[grepl('Corn', field_df$current_crop, ignore.case=T)] <- 'C
 field_df$current_crop[grepl('silage', field_df$current_crop, ignore.case=T)] <- 'Corn Silage'
 field_df$current_crop[grepl('alf', field_df$current_crop, ignore.case=T)] <- 'Alfalfa'
 
+saveRDS(field_df, file.path(path_to_data, 'compiled_data', 'FarmManagementActivites.rds'))
+write.csv(field_df, file.path(path_to_data, 'compiled_data', 'FarmManagementActivites.csv'), row.names=F, sep=',')
+
 
 field_crop_byyear <- field_df %>%
   select(site, calendar_year, current_crop) %>%

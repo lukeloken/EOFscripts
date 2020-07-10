@@ -20,6 +20,7 @@ approved_files <- approved_files[which(grepl("paired", approved_files)==FALSE)]
 
 
 file_nu =1
+# for (file_nu in c(1:8, 10:length(approved_files))){
 for (file_nu in 1:length(approved_files)){
   file <- approved_files[file_nu]
   path_to_sitefile <- file.path(path_to_data, "field_analysis", "approved_site_data", file)

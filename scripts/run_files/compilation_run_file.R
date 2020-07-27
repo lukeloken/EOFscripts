@@ -10,6 +10,8 @@ source('scripts/functions/ScaleYLog10Nice.R')
 
 `%notin%` <- Negate(`%in%`)
 
+#load master R files
+source('scripts/data_compliation/1_load_master_data.R')
 
 #compile site approved data
 #These data contain estimated loads
@@ -26,8 +28,6 @@ source('scripts/data_compliation/1_load_soil_data.R')
 #load farm management data
 source('scripts/data_compliation/1_load_field_data.R')
 
-#load master R files
-source('scripts/data_compliation/1_load_master_data.R')
 
 #load precip data
 #Takes multiple hours and needs network

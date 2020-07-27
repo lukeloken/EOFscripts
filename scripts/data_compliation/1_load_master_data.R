@@ -19,9 +19,10 @@ sites_table_prep <- sites_table %>%
 master_files <- list.files((file.path(path_to_data, 'field_analysis', 'approved_site_data', '0_masters')), 
                            full.names = TRUE, pattern = 'master', ignore.case = TRUE)
 
-master_df <- data.frame(matrix(nrow=length(master_files), ncol=19))
+master_df <- data.frame(matrix(nrow=length(master_files), ncol=21))
 names(master_df) <- c('site', 'study_type', 'site_tz',
                       'start_date', 'end_date', 'bmp_date', 
+                      'datetime_format', 'date_format',
                       'rain_site', 'discharge_site_no', 'noaa_site', 
                       'wq_file', 'rain_file', 'discharge_file', 'weather_file',
                       'predictors_drop', 'filter_exclude', 'filter_estimated',
@@ -37,6 +38,7 @@ for (file_nu in 1:length(master_files)){
   
   #Override objects so they are not populated into table for next file
   site <- study_type <- site_tz <- start_date <- end_date <- NA
+  datetime_format <- date_format <- NA 
   bmp_date <- rain_site <- discharge_site_no <- noaa_site <- NA 
   wq_file <- rain_file <- discharge_file <- weather_file <- NA
   predictors_drop <- filter_exclude <- filter_estimated <- NA
@@ -52,6 +54,8 @@ for (file_nu in 1:length(master_files)){
   master_df$start_date[file_nu] <- as.Date(start_date)
   master_df$end_date[file_nu] <- as.Date(end_date)
   master_df$bmp_date[file_nu] <- as.Date(bmp_date)
+  master_df$date_format[file_nu] <- date_format
+  master_df$datetime_format[file_nu] <- datetime_format
   master_df$rain_site[file_nu] <- rain_site
   master_df$discharge_site_no[file_nu] <- discharge_site_no
   master_df$noaa_site[file_nu] <- noaa_site
@@ -69,6 +73,7 @@ for (file_nu in 1:length(master_files)){
   #Remove all objects
   rm(list = c('site', 'study_type', 'site_tz',
     'start_date', 'end_date', 'bmp_date', 
+    'datetime_format', 'date_format',
     'rain_site', 'discharge_site_no', 'noaa_site', 
     'wq_file', 'rain_file', 'discharge_file', 'weather_file',
     'predictors_drop', 'filter_exclude', 'filter_estimated',

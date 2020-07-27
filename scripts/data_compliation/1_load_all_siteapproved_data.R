@@ -6,6 +6,9 @@
 #This is where the data live
 print(path_to_data)
 
+master_beforeafter_df <- readRDS(file.path(path_to_data, 'compiled_data', 'rain', 'Compiled_Masters.rds'))
+
+
 #Create empty list for all site data
 allsites_list <-list()
 
@@ -20,8 +23,10 @@ approved_files <- approved_files[which(grepl("paired", approved_files)==FALSE)]
 
 
 file_nu =1
-# for (file_nu in c(1:8, 10:length(approved_files))){
+# for (file_nu in c(1:7, 9:21)){
 for (file_nu in 1:length(approved_files)){
+  state_tz <- full_site <- state <- site <- datetime_format <- storm_end_na <- storm_start_na <- NA
+  
   file <- approved_files[file_nu]
   path_to_sitefile <- file.path(path_to_data, "field_analysis", "approved_site_data", file)
   
@@ -32,24 +37,52 @@ for (file_nu in 1:length(approved_files)){
   site <- substr(file_site_list[2], 1,3)
   full_site <- paste(state, site, sep='-')
   
-  if (state %in% c('WI')){
-    state_tz <- 'America/Chicago'
-  } else if (state %in% c('OH', 'NY', 'IN', 'MI')){
-    state_tz <- 'America/New_York'
-  }
+  state_tz <- master_beforeafter_df$site_tz[match(full_site, master_beforeafter_df$site)]
+  datetime_format <- master_beforeafter_df$datetime_format[match(full_site, master_beforeafter_df$site)]
+
+  #Prevoiusly did not have master file for MI-TL2  
+  # if(full_site == 'MI-TL2'){
+  #   state_tz <- master_beforeafter_df$site_tz[match('MI-SW2', master_beforeafter_df$site)]
+  #   datetime_format <- master_beforeafter_df$datetime_format[match('MI-SW2', master_beforeafter_df$site)]
+  #   }
+  
+  # if (state %in% c('WI')){
+  #   state_tz <- 'America/Chicago'
+  # } else if (state %in% c('OH', 'NY', 'IN', 'MI')){
+  #   state_tz <- 'America/New_York'
+  # }
   
   #load and combine all model (mod) files
+  # data_i <- read.csv(path_to_sitefile, stringsAsFactors = F, header=T) %>%
+  #   mutate(sample_start = anytime(sample_start, tz=state_tz),
+  #          sample_end = anytime(sample_end, tz=state_tz),
+  #          storm_start =anytime(storm_start, tz=state_tz),
+  #          storm_end = anytime(storm_end, tz=state_tz)) %>%
+  #   arrange(storm_start) %>%
+  #   # select(-file_id) %>%
+  #   distinct()
+  
   data_i <- read.csv(path_to_sitefile, stringsAsFactors = F, header=T) %>%
-    mutate(sample_start = anytime(sample_start, tz=state_tz),
-           sample_end = anytime(sample_end, tz=state_tz),
-           storm_start =anytime(storm_start, tz=state_tz),
-           storm_end = anytime(storm_end, tz=state_tz)) %>%
+    mutate(across(contains('_start', ignore.case=TRUE), 
+                  as.POSIXct, tz=state_tz, format = datetime_format)) %>%
+  mutate(across(contains('_end', ignore.case=TRUE), 
+                as.POSIXct, tz=state_tz, format = datetime_format))  %>%
     arrange(storm_start) %>%
     # select(-file_id) %>%
     distinct()
   
   #remove rows that are entirely NA
   data_i[as.logical((rowSums(is.na(data_i))-ncol(data_i))),]
+  
+  storm_end_na <- length(which(is.na(data_i$storm_end)))
+  storm_start_na <- length(which(is.na(data_i$storm_start)))
+  
+  if (storm_end_na == nrow(data_i) | storm_start_na == nrow(data_i)){
+    stop(paste0("Site ", toString(full_site), " has all NAs in storm_start or storm_end columns. Check Master file datetime and date formats."))
+  } else if (storm_end_na > 0 | storm_start_na > 0){
+    warning(paste0("Site ", toString(full_site), " has ", toString(length(storm_end_na) + length(storm_start_na)),
+                   " NAs in storm_start or storm_end columns. Check Master file datetime and date formats."))
+  }
   
   if ('storm_runoff_cubic_feet' %in% names(data_i)){
     data_i <- dplyr::mutate(data_i, runoff_volume = storm_runoff_cubic_feet) %>%
@@ -243,6 +276,71 @@ for (var_i in 1:length(names_list)){
 # head(data_df_new)
 
 
+saveRDS(data_df_new, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_approved_data.rds" ))))
+
+write.csv(data_df_new, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_approved_data.csv" ))), row.names=F)
+
+
+# merged_sites <- data.frame(sites = as.character(unique(data_df_new$site)), stringsAsFactors = F)
+# merged_sites <- arrange(merged_sites, sites)
+
+site_summary_report <- data_df_new %>%
+  drop_na(storm_start, storm_end) %>%
+  group_by(site, estimated) %>%
+  dplyr::summarise(first_storm = as.Date(min(storm_start, na.rm=T)),
+            last_storm = as.Date(max(storm_start, na.rm=T)),
+            number_of_storms = n(),
+            runoff_volume = round(sum(runoff_volume, na.rm=T),0)) %>%
+  spread(key=estimated, value=runoff_volume) %>%
+  rename(Volume_Estimated = '1',
+         Volume_Measured = '0') 
+
+site_summary_report$Number_Estimated <- ifelse(is.na(site_summary_report$Volume_Estimated), NA, 
+                                               site_summary_report$number_of_storms)
+
+site_summary_report$Number_Measured <- ifelse(is.na(site_summary_report$Volume_Measured), NA, 
+                                               site_summary_report$number_of_storms)
+
+site_summary_report2 <- site_summary_report %>%
+  group_by(site) %>%
+  summarize_at(vars(number_of_storms:Number_Measured), sum, na.rm=T) %>%
+  mutate(fraction_volume = round(Volume_Measured / (Volume_Measured + Volume_Estimated),2),
+         fraction_number = round(Number_Measured / (Number_Measured + Number_Estimated),2))
+
+            
+#             # number_estimated = nrow(filter(cur_data(), estimated == "1")))
+# 
+# percent_sampled <- data_df_new %>%
+#   drop_na(storm_start, storm_end) %>%
+#   select(site, runoff_volume, percent_runoff_sampled) %>%
+#   mutate(volume_calc = runoff_volume*percent_runoff_sampled)
+# 
+
+# 
+#          first_storm = as.Date(min(storm_start, na.rm=T)),
+#                    last_storm = as.Date(max(storm_start, na.rm=T)),
+#                    number_of_storms = n(),
+#                    number_estimated = nrow(filter(cur_data(), estimated == "1")))
+# 
+#   group_by(site) %>%
+  
+print(data.frame(site_summary_report2))
+
+if (nrow(site_summary_report2) != 21){
+  warning(paste0(toString(nrow(site_summary_report)), " sites in dataset. Should be 21"))
+  # print(merged_sites)
+} else {
+  print("21 sites in dataset. Great job!!!")
+}
+
+
+write.csv(site_summary_report2, file=(file_out(file.path(path_to_data, "compiled_data", "compiled_summary_report.csv" ))), row.names=F)
+
+
+# #############################################
+# Plot calculated versus reported concentration
+# #############################################
+
 
 #Calculate concentration using loads and runoff volume
 
@@ -255,22 +353,6 @@ data_df_withconc <- bind_cols(data_df_new, conc_df) %>%
 
 data_df_withconc <- bind_cols(data_df_new, conc_df)
 
-
-
-saveRDS(data_df_new, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_approved_data.rds" ))))
-
-write.csv(data_df_new, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_approved_data.csv" ))), row.names=F)
-
-merged_sites <- data.frame(sites = as.character(unique(data_df_new$site)), stringsAsFactors = F)
-merged_sites <- arrange(merged_sites, sites)
-
-
-if (nrow(merged_sites) != 20){
-  warning(paste0(toString(nrow(merged_sites)), " sites in dataset. Should be 20"))
-  print(merged_sites)
-} else {
-  print("20 sites in dataset. Great job!!!")
-}
 
 
 calc_vars <- names(data_df_withconc)[grepl('_calculated', names(data_df_withconc))]
@@ -305,8 +387,8 @@ for (var_i in 1:length(concvars)) {
                            is.na(diff) ~ 'NA'),
          label2 = case_when(group2 == 'good' ~ "",
                            group2 %in% c('high', 'NA') ~ unique_storm_number)) %>%
-    mutate(flag_yes = ifelse(grepl('<', data_df_withconc[,flagvars[var_i]]), TRUE, FALSE)) %>%
-    filter(site != 'MI-TL2')
+    mutate(flag_yes = ifelse(grepl('<', data_df_withconc[,flagvars[var_i]]), TRUE, FALSE)) #%>%
+    # filter(site != 'MI-TL2')
 
  
     
@@ -352,7 +434,11 @@ for (var_i in 1:length(concvars)) {
 }
 
 
-plot_list[[2]]
+# plot_list[[2]]
+
+
+# end
+
 
 
 

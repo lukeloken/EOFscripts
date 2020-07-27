@@ -1,4 +1,6 @@
 
+library(pls)
+
 #load storm data
 data_df3 <- readRDS(file=(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_conc_allsites_model.rds" ))))
 
@@ -27,7 +29,7 @@ soil_0_15 <- readRDS(file=file_in(file.path(path_to_data, 'soil', 'cleaned_data'
   select(-Type)
 
 #Variable groups
-soil_vars <- names(soil_0_15)[c(4:25, 26:29,32:37, 39:43)]
+soil_vars <- names(soil_0_15)[c(4:25, 26:29,32:37, 39:41, 47:48)]
 wq_vars <- c(loadvars, concvars, yieldvars, yieldperweqvars)
 
 wq_weightedvars <- wq_vars[which(wq_vars %notin% c('runoff_volume', 'runoff_volume_cubicfootperAcre', 
@@ -154,11 +156,17 @@ predictors.keep <- c(names.cor[-drop.predictors], 'Manure')
 
 predictors.keep.physics <- soil_vars[c(19:24, 27:32, 34:37)]
 
+
+
+# Partial least squares (library(pls))
+# multi linear regression, glm, etc. 
+
 wq_var<-1
-plot_list_yield <-list()
-glm_list_yield <- list()
-model_fig_yield <- list()
-model_data_yield <- list()
+plot_list_yield <- glm_list_yield <- list()
+model_fig_yield <- model_data_yield <- list()
+
+pls_list_yield <- pca_list_yield <- pls_plot_yield <- list()
+
 for (wq_var in 1:length(choice_yields)) {
   
   var_list <- list()
@@ -249,6 +257,31 @@ for (wq_var in 1:length(choice_yields)) {
   
   print(model_fig_yield[[wq_var]])
   
+  #pls
+  pls_formula <- formula(paste(choice_yields[wq_var], " ~ ", 
+                       paste(names(data.glm)[1:(ncol(data.glm)-1)], collapse = "+") ))
+  pca_list_yield[[wq_var]] <- pcr(pls_formula ,  data=data.glm, ncomp=4, validation='LOO')
+  
+  pls_list_yield[[wq_var]] <- plsr(pls_formula ,  data=data.glm, ncomp=4, validation='LOO')
+  print(choice_yields[wq_var])
+  pls_list_yield[[wq_var]]
+  summary(pls_list_yield[[wq_var]])
+  plot(pls_list_yield[[wq_var]], plottype='validation')
+  plot(pls_list_yield[[wq_var]], asp = 1, line=TRUE, ncomp=2)
+  plot(pls_list_yield[[wq_var]], plottype = "scores", comps = 1:4)
+  explvar(pls_list_yield[[wq_var]])
+  
+  plot(pls_list_yield[[wq_var]], "loadings", comps = 1:2, legendpos = "topright", xaxt='n', lwd=2)
+  # abline(v=1:ncol(data.glm), lty=2, col='grey', lwd=.5)
+  axis(1, at=1:(ncol(data.glm)-1), labels = names(data.glm)[1:(ncol(data.glm)-1)], las=2, cex.axis=.75)
+  
+  ncomp.onesigma <- selectNcomp(pls_list_yield[[wq_var]], method = "onesigma", plot = TRUE)
+  ncomp.permut <- selectNcomp(pls_list_yield[[wq_var]], method = "randomization", plot = TRUE)
+  
+  gas2.cv <- crossval(pls_list_yield[[wq_var]], segments = 10)
+  plot(MSEP(gas2.cv), legendpos="topright")
+  
+
 }
 
 

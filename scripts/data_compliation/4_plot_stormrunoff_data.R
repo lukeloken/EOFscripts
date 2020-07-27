@@ -67,20 +67,19 @@ var_i <- 11
 for (var_i in 1:length(loadvars)){
   
   LoadByRunnoff_plotlist[[var_i]] <- ggplot(data=data_df3, aes_string(x="sum_runoff", y=loadvars[var_i], group="wateryear", color="wateryear", fill="wateryear")) +
-    scale_x_log10() +
-    scale_y_log10() +
+    scale_x_log10nice(name = "Runoff volume (cubic feet per storm)") +
+    scale_y_log10nice(name = loadvars[var_i]) +
     geom_point(aes(shape=frozen), size=2) +
     scale_shape_manual(values=c(16, 1))+
     stat_smooth(method = "lm", se=T, alpha=.1) +
-    facet_wrap(~site, scales='free') +
+    facet_wrap(~site, scales='free', nrow=3) +
     theme_bw() +
     theme(legend.position = 'bottom') +
-    guides(color = guide_legend(nrow = 1)) +
-    labs(x = "Runoff volume (cubic feet per storm)")
-  
+    guides(color = guide_legend(nrow = 1)) 
+
   print(LoadByRunnoff_plotlist[[var_i]])
   
-  ggsave(file_out(file.path(path_to_results, "Figures", "Loads", paste0(loadvars[var_i], "ByRunoff_plot.png"))), LoadByRunnoff_plotlist[[var_i]], height=8, width=12, units = 'in', dpi=320)
+  ggsave(file_out(file.path(path_to_results, "Figures", "Loads", paste0(loadvars[var_i], "ByRunoff_plot.png"))), LoadByRunnoff_plotlist[[var_i]], height=6, width=15, units = 'in', dpi=320)
   
 }
 
@@ -225,7 +224,7 @@ for (var_i in 1:length(concvars)){
     geom_boxplot(alpha=0.2, outlier.shape = NA) +
     # scale_shape_manual(values=c(16, 1))+
     # stat_smooth(method = "lm", se=T, alpha=.1) +
-    facet_wrap(~site, scales='free_y') +
+    facet_wrap(~site, scales='free_y', nrow=3) +
     theme_bw() +
     theme(legend.position = 'bottom') +
     guides(color = guide_legend(nrow = 1)) +
@@ -236,7 +235,7 @@ for (var_i in 1:length(concvars)){
   
   print(ConcByYear_boxlist[[var_i]])
   
-  ggsave(file_out(file.path(path_to_results, "Figures", "Boxplots", paste0(concvars[var_i], "ByYear_boxplot.png"))), ConcByYear_boxlist[[var_i]], height=8, width=12, units = 'in', dpi=320)
+  ggsave(file_out(file.path(path_to_results, "Figures", "Boxplots", paste0(concvars[var_i], "ByYear_boxplot.png"))), ConcByYear_boxlist[[var_i]], height=6, width=15, units = 'in', dpi=320)
   
 }
 
@@ -252,7 +251,7 @@ for (var_i in 1:length(concvars)){
     geom_boxplot(alpha=0.2, outlier.shape = NA) +
     # scale_shape_manual(values=c(16, 1))+
     # stat_smooth(method = "lm", se=T, alpha=.1) +
-    facet_wrap(~site, scales='free_y') +
+    facet_wrap(~site, scales='free_y', nrow=3) +
     theme_bw() +
     theme(legend.position = 'bottom') +
     guides(color = guide_legend(nrow = 1)) +
@@ -263,7 +262,7 @@ for (var_i in 1:length(concvars)){
   
   print(ConcByYear_nonFrozen_boxlist[[var_i]])
   
-  ggsave(file_out(file.path(path_to_results, "Figures", "Boxplots", paste0(concvars[var_i], "ByYear_nonFrozen_boxplot.png"))), ConcByYear_nonFrozen_boxlist[[var_i]], height=8, width=12, units = 'in', dpi=320)
+  ggsave(file_out(file.path(path_to_results, "Figures", "Boxplots", paste0(concvars[var_i], "ByYear_nonFrozen_boxplot.png"))), ConcByYear_nonFrozen_boxlist[[var_i]], height=6, width=15, units = 'in', dpi=320)
   
 }
 
@@ -279,7 +278,7 @@ for (var_i in 1:length(concvars)){
     geom_boxplot(alpha=0.2, outlier.shape = NA) +
     # scale_shape_manual(values=c(16, 1))+
     # stat_smooth(method = "lm", se=T, alpha=.1) +
-    facet_wrap(~site, scales='free_y') +
+    facet_wrap(~site, scales='free_y', nrow=3) +
     theme_bw() +
     theme(legend.position = 'bottom') +
     guides(color = guide_legend(nrow = 1)) +
@@ -290,7 +289,7 @@ for (var_i in 1:length(concvars)){
   
   print(ConcByYear_Frozen_boxlist[[var_i]])
   
-  ggsave(file_out(file.path(path_to_results, "Figures", "Boxplots", paste0(concvars[var_i], "ByYear_Frozen_boxplot.png"))), ConcByYear_Frozen_boxlist[[var_i]], height=8, width=12, units = 'in', dpi=320)
+  ggsave(file_out(file.path(path_to_results, "Figures", "Boxplots", paste0(concvars[var_i], "ByYear_Frozen_boxplot.png"))), ConcByYear_Frozen_boxlist[[var_i]], height=6, width=15, units = 'in', dpi=320)
   
 }
 
@@ -308,7 +307,7 @@ for (var_i in 1:length(rainvars)){
     geom_boxplot(alpha=0.2, outlier.shape = NA) +
     # scale_shape_manual(values=c(16, 1))+
     # stat_smooth(method = "lm", se=T, alpha=.1) +
-    facet_wrap(~site, scales='free_y') +
+    facet_wrap(~site, scales='free_y', nrow=3) +
     theme_bw() +
     theme(legend.position = 'bottom') +
     guides(color = guide_legend(nrow = 1)) +
@@ -319,7 +318,7 @@ for (var_i in 1:length(rainvars)){
   
   print(RainByYear_boxlist[[var_i]])
   
-  ggsave(file_out(file.path(path_to_results, "Figures", "Rain_Boxplots", paste0(rainvars[var_i], "ByYear_boxplot.png"))), RainByYear_boxlist[[var_i]], height=8, width=12, units = 'in', dpi=320)
+  ggsave(file_out(file.path(path_to_results, "Figures", "Rain_Boxplots", paste0(rainvars[var_i], "ByYear_boxplot.png"))), RainByYear_boxlist[[var_i]], height=6, width=15, units = 'in', dpi=320)
   
 }
 
@@ -330,7 +329,7 @@ RunoffByYear_box <- ggplot(data=data_df3, aes_string(x="wateryear", y="sum_runof
   geom_boxplot(alpha=0.2, outlier.shape = NA) +
   # scale_shape_manual(values=c(16, 1))+
   # stat_smooth(method = "lm", se=T, alpha=.1) +
-  facet_wrap(~site, scales='free_y') +
+  facet_wrap(~site, scales='free_y', nrow=3) +
   theme_bw() +
   theme(legend.position = 'bottom') +
   guides(color = guide_legend(nrow = 1)) +
@@ -341,7 +340,7 @@ RunoffByYear_box <- ggplot(data=data_df3, aes_string(x="wateryear", y="sum_runof
 
 print(RunoffByYear_box)
 
-ggsave(file_out(file.path(path_to_results, "Figures", "Rain_Boxplots", paste0("sum_runoff", "ByYear_boxplot.png"))), RunoffByYear_box, height=8, width=12, units = 'in', dpi=320)
+ggsave(file_out(file.path(path_to_results, "Figures", "Rain_Boxplots", paste0("sum_runoff", "ByYear_boxplot.png"))), RunoffByYear_box, height=6, width=15, units = 'in', dpi=320)
 
 
 

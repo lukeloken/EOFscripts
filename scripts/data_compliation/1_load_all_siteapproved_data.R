@@ -80,8 +80,12 @@ for (file_nu in 1:length(approved_files)){
   if (storm_end_na == nrow(data_i) | storm_start_na == nrow(data_i)){
     stop(paste0("Site ", toString(full_site), " has all NAs in storm_start or storm_end columns. Check Master file datetime and date formats."))
   } else if (storm_end_na > 0 | storm_start_na > 0){
+    storms_missing_dates <- unique(data_i$unique_storm_id[which(is.na(data_i$storm_end))],
+           data_i$unique_storm_id[which(is.na(data_i$storm_start))])
+    
     warning(paste0("Site ", toString(full_site), " has ", toString(length(storm_end_na) + length(storm_start_na)),
-                   " NAs in storm_start or storm_end columns. Check Master file datetime and date formats."))
+                   " NAs in storm_start or storm_end columns. Dropping storm #'s: ", toString(storms_missing_dates)))
+    data_i <- filter(data_i, !is.na(storm_end), !is.na(storm_start))
   }
   
   if ('storm_runoff_cubic_feet' %in% names(data_i)){
@@ -285,7 +289,7 @@ write.csv(data_df_new, file=(file_out(file.path(path_to_data, "compiled_data", "
 # merged_sites <- arrange(merged_sites, sites)
 
 site_summary_report <- data_df_new %>%
-  drop_na(storm_start, storm_end) %>%
+  filter(!is.na(storm_start), !is.na(storm_end)) %>%
   group_by(site, estimated) %>%
   dplyr::summarise(first_storm = as.Date(min(storm_start, na.rm=T)),
             last_storm = as.Date(max(storm_start, na.rm=T)),
@@ -305,7 +309,12 @@ site_summary_report2 <- site_summary_report %>%
   group_by(site) %>%
   summarize_at(vars(number_of_storms:Number_Measured), sum, na.rm=T) %>%
   mutate(fraction_volume = round(Volume_Measured / (Volume_Measured + Volume_Estimated),2),
-         fraction_number = round(Number_Measured / (Number_Measured + Number_Estimated),2))
+         fraction_number = round(Number_Measured / (Number_Measured + Number_Estimated),2)) %>%
+  left_join(select(site_summary_report, site, first_storm, last_storm) %>%
+              group_by(site) %>%
+              summarize(first_storm = min(first_storm, na.rm=T),
+                        last_storm = max(last_storm, na.rm=T))) %>%
+  select(site, first_storm, last_storm, number_of_storms, Number_Measured, Number_Estimated, fraction_number, Volume_Measured, Volume_Estimated, fraction_volume, everything())
 
             
 #             # number_estimated = nrow(filter(cur_data(), estimated == "1")))

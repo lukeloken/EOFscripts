@@ -117,6 +117,7 @@ harvest_timeline <- ggplot(field_harvest_byyear, aes(x=date, y=site, fill=curren
   scale_shape_manual(values=c(25, 21:24)) +
   ggtitle('Harvest date')
 
+print(harvest_timeline)
 
 ggsave(file=file_out(file.path(path_to_results, 'Figures', "HavestDates.png")), harvest_timeline, height=6, width=8)
 

@@ -179,8 +179,9 @@ for (site_nu in 1:length(site_numbers)){
 #Bind list together
 StormSummary_df <- bind_rows(StormSummary_list, .id = "rain_site")%>%
   distinct() %>%
-  mutate(site = site_names[match(rain_site, rain_sites)],
+  mutate(site = master_beforeafter_df$site[match(rain_site, master_beforeafter_df$`rain station ID`)],
          source = 'raw')
+
 
 StormSummary_df$state <- str_split(StormSummary_df$site, "-", simplify = TRUE)[,1]
 
@@ -196,12 +197,14 @@ saveRDS(StormSummary_df, file.path(path_to_data, 'compiled_data', 'rain', 'Compi
 rain_allsites.TS <- ggplot(StormSummary_df, aes(x=StartDate, xend=StartDate, yend=0, y=rain)) +
   geom_segment(size=0.2, col='grey') +
   geom_point(aes(col=state), size=1.25, alpha=0.5) +
-  facet_wrap(~paste(site, rain_site, sep=': '), ncol=2, scales='free_x') +
+  facet_wrap(~paste(site, rain_site, sep=': '), ncol=2) +
   theme_bw() +
   theme(legend.position='none') +
   ggtitle('Storm Size: NWIS and raw files') +
   scale_y_sqrt(limits=c(0, NA), expand=c(0, 0)) +
-  theme(strip.background = element_rect(fill=NA, color=NA))
+  scale_x_datetime(date_breaks = 'years', date_labels = "%Y", minor_breaks = NULL) + 
+  theme(strip.background = element_rect(fill=NA, color=NA)) +
+  labs(x = "Calendar year", y = "Rain (in)")
 
 print(rain_allsites.TS)
   

@@ -315,23 +315,6 @@ site_summary_report2 <- site_summary_report %>%
               summarize(first_storm = min(first_storm, na.rm=T),
                         last_storm = max(last_storm, na.rm=T))) %>%
   select(site, first_storm, last_storm, number_of_storms, Number_Measured, Number_Estimated, fraction_number, Volume_Measured, Volume_Estimated, fraction_volume, everything())
-
-            
-#             # number_estimated = nrow(filter(cur_data(), estimated == "1")))
-# 
-# percent_sampled <- data_df_new %>%
-#   drop_na(storm_start, storm_end) %>%
-#   select(site, runoff_volume, percent_runoff_sampled) %>%
-#   mutate(volume_calc = runoff_volume*percent_runoff_sampled)
-# 
-
-# 
-#          first_storm = as.Date(min(storm_start, na.rm=T)),
-#                    last_storm = as.Date(max(storm_start, na.rm=T)),
-#                    number_of_storms = n(),
-#                    number_estimated = nrow(filter(cur_data(), estimated == "1")))
-# 
-#   group_by(site) %>%
   
 print(data.frame(site_summary_report2))
 

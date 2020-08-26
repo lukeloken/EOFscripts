@@ -137,7 +137,8 @@ for (folder_nu in 1:length(folders)){
       TOC_names <- names(data_df)[grepl('toc', names(data_df), ignore.case=T)]
       
       #Combine names into a list. The order of this list must match the good column names listed above
-      names_list <- list(sediment_names, chloride_names, nitrate_names, ammonium_names, TKN_names,  SRP_names,
+      names_list <- list(sediment_names, chloride_names, nitrate_names, ammonium_names, 
+                         TKN_names,  SRP_names,
                          TP_names, TN_names, organicN_names, DOC_names, TOC_names)
       
       #Load and concentration
@@ -300,3 +301,4 @@ rm(file_site_name, folder, folder_nu, folders, mod_files, recent_folder, rundate
 saveRDS(data_df_new, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_model_data.rds" ))))
 
 write.csv(data_df_new, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_model_data.csv" ))), row.names=F)
+

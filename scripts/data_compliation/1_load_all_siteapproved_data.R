@@ -7,6 +7,7 @@
 print(path_to_data)
 
 master_beforeafter_df <- readRDS(file.path(path_to_data, 'compiled_data', 'rain', 'Compiled_Masters.rds'))
+gis_combined <- readRDS(file.path(path_to_data, 'compiled_data', 'GIS_Compiled.rds'))
 
 
 #Create empty list for all site data
@@ -111,7 +112,11 @@ for (file_nu in 1:length(approved_files)){
 }
 
 #Combine all sites into a single data.frame
-data_df <- ldply(allsites_list, data.frame, .id = "site") 
+data_df <- ldply(allsites_list, data.frame, .id = "site") %>%
+  left_join(select(gis_combined, site, Area_acres), by = "site") %>%
+  select(!contains("yield"))
+
+
 
 # #########################################################
 # unite columns that have the same data, but different names
@@ -142,6 +147,19 @@ concvars <- c('suspended_sediment_conc_mgL',
               'organic_nitrogen_conc_mgL',
               'doc_conc_mgL',
               'toc_conc_mgL')
+
+#Preferred yield names
+yieldvars <- c('suspended_sediment_yield_pounds_per_acre', 
+              'chloride_yield_pounds_per_acre',
+              'no2_no3n_yield_pounds_per_acre', 
+              'ammonium_n_yield_pounds_per_acre',
+              'tkn_unfiltered_yield_pounds_per_acre', 
+              'orthophosphate_yield_pounds_per_acre',
+              'tp_unfiltered_yield_pounds_per_acre',
+              'total_nitrogen_yield_pounds_per_acre',
+              'organic_nitrogen_yield_pounds_per_acre',
+              'doc_yield_pounds_per_acre', 
+              'toc_yield_pounds_per_acre')
 
 flagvars <- c("flag_suspended_sediment", "flag_chloride", "flag_no2_no3n", 
               "flag_ammonium_n", "flag_tkn_unfiltered", "flag_orthophosphate",
@@ -178,6 +196,7 @@ flag_names <- names(data_df)[grepl('flag', names(data_df), ignore.case=T)]
 
 
 #Loop through each variable and combine concentration and load data
+#Calculate yields using area and load
 var_i = 1
 data_df_new <- data_df
 for (var_i in 1:length(names_list)){
@@ -228,6 +247,8 @@ for (var_i in 1:length(names_list)){
 
   names(data_conc_i_unite)[which(names(data_conc_i_unite)=='used_conc_numeric')] <- 
     paste0(good_conc_name, '_used')
+  
+  data_conc_i_unite[,1] <- as.numeric(gsub("<", "", data_conc_i_unite[,1]))
 
   # data_conc_i_unite <- data_conc_i_unite 
   # 
@@ -241,9 +262,10 @@ for (var_i in 1:length(names_list)){
   #merge load
   load_names_i <- intersect(load_names, names_list[[var_i]])
   good_load_name <- loadvars[var_i]
+  good_yield_name <- yieldvars[var_i]
   
   data_load_i <- data_df %>%
-    select(all_of(load_names_i)) %>%
+    select(all_of(load_names_i), Area_acres) %>%
     mutate_all(as.character) 
   
   data_load_i_unite <- unite(data_load_i, col=merge_var, 1:(length(load_names_i)), na.rm=T)
@@ -251,7 +273,11 @@ for (var_i in 1:length(names_list)){
   names(data_load_i_unite)[1] <- as.character(good_load_name)
   
   data_load_i_unite <- mutate_all(data_load_i_unite, as.numeric) %>%
-    mutate(site_load = data_df$site)
+    mutate(yield = !!sym(good_load_name)/as.numeric(Area_acres)) %>%
+    mutate(site_load = data_df$site) %>%
+    select(-Area_acres)
+  
+  names(data_load_i_unite)[2] <- as.character(good_yield_name)
   
   
   # Ratio <- data_i_unite[,1] / data_i_unite[,2]
@@ -271,9 +297,10 @@ for (var_i in 1:length(names_list)){
   # 
   data_df_new <- data_df_new %>%
     select(-all_of(c(conc_names_i, load_names_i, flag_names_i))) %>%
-    bind_cols(data_load_i_unite[,1:2]) %>%
+    bind_cols(data_load_i_unite[,1:3]) %>%
     bind_cols(data_conc_i_unite[,1:4]) %>%
-    select(-site_load, -site_conc)
+    select(-site_load, -site_conc) 
+  
   
 }
 

@@ -18,6 +18,7 @@ library(dataRetrieval)
 dataRetrieval::setAccess('internal')
 library(ggplot2)
 library(dplyr)
+library(stringr)
 # devtools::install_github("USGS-R/Rainmaker")
 
 # Turn on Rainmaker package
@@ -104,30 +105,40 @@ names(Rain.uv)[grep('site_no', names(Rain.uv), ignore.case = TRUE)] <- 'rain_sit
 # 3. Combine raw and NWIS data
 
 #Identify overlapping times
-df.nwis.times <- Rain.uv %>% 
-  group_by(rain_site) %>%
-  summarize_at(vars(pdate), list(max=max, min=min), na.rm=T) %>%
-  filter(rain_site %in% unique(raw_rain_data$rain_site))
+# df.nwis.times <- Rain.uv %>% 
+#   group_by(rain_site) %>%
+#   summarize_at(vars(pdate), list(max=max, min=min), na.rm=T) %>%
+#   filter(rain_site %in% unique(raw_rain_data$rain_site))
 
-df.raw.prep.1 <- filter(raw_rain_data, rain_site==df.nwis.times$rain_site[1]) %>%
-  filter(pdate>df.nwis.times$max[1] | pdate<df.nwis.times$min[1])
-df.raw.prep.2 <- filter(raw_rain_data, rain_site==df.nwis.times$rain_site[2]) %>%
-  filter(pdate>df.nwis.times$max[2] | pdate<df.nwis.times$min[2])
-df.raw.prep.3 <- filter(raw_rain_data, rain_site==df.nwis.times$rain_site[3]) %>%
-  filter(pdate>df.nwis.times$max[3] | pdate<df.nwis.times$min[3])
-df.raw.prep.4 <- filter(raw_rain_data, rain_site==df.nwis.times$rain_site[4]) %>%
-  filter(pdate>df.nwis.times$max[4] | pdate<df.nwis.times$min[4])
-
-df.raw.prep.all <- bind_rows(df.raw.prep.1, df.raw.prep.2, 
-                             df.raw.prep.3, df.raw.prep.4)
+# df.raw.prep.1 <- filter(raw_rain_data, rain_site==df.nwis.times$rain_site[1]) %>%
+#   filter(pdate>df.nwis.times$max[1] | pdate<df.nwis.times$min[1])
+# df.raw.prep.2 <- filter(raw_rain_data, rain_site==df.nwis.times$rain_site[2]) %>%
+#   filter(pdate>df.nwis.times$max[2] | pdate<df.nwis.times$min[2])
+# df.raw.prep.3 <- filter(raw_rain_data, rain_site==df.nwis.times$rain_site[3]) %>%
+#   filter(pdate>df.nwis.times$max[3] | pdate<df.nwis.times$min[3])
+# df.raw.prep.4 <- filter(raw_rain_data, rain_site==df.nwis.times$rain_site[4]) %>%
+#   filter(pdate>df.nwis.times$max[4] | pdate<df.nwis.times$min[4])
+# 
+# df.raw.prep.all <- bind_rows(df.raw.prep.1, df.raw.prep.2, 
+#                              df.raw.prep.3, df.raw.prep.4)
 
 #Combine with NWIS data
+# Rain.uv.combined <- Rain.uv %>% 
+#   select(rain_site, pdate, rain) %>%
+#   bind_rows(df.raw.prep.all) %>%
+#   distinct() %>%
+#   arrange(rain_site, pdate) %>%
+#   filter(!is.na(rain))
+
 Rain.uv.combined <- Rain.uv %>% 
   select(rain_site, pdate, rain) %>%
-  bind_rows(df.raw.prep.all) %>%
+  # bind_rows(df.raw.prep.all) %>%
   distinct() %>%
   arrange(rain_site, pdate) %>%
   filter(!is.na(rain))
+
+saveRDS(Rain.uv.combined, file.path(path_to_data, 'compiled_data', 'rain', 'Compiled_Rain_UV_Data.rds'))
+
 
 
 #***#***#***#***#***#***#***#***#***#***#***#***#***#***#***#***#
@@ -141,7 +152,7 @@ for (site_nu in 1:length(site_numbers)){
   
   rain.uv.i <- Rain.events.i <- tipsbystorm.i <- StormSummary.i <- ".dplyr"
   
-  rain.uv.i <- filter(Rain.uv.combined, rain_site == site_numbers[site_nu]) %>%
+  rain.uv.i <- dplyr::filter(Rain.uv.combined, rain_site == site_numbers[site_nu]) %>%
     arrange(pdate)
   
   Rain.events.i <- RMevents(df=rain.uv.i, ieHr=ieHr, rainthresh=rainthresh, 
@@ -151,28 +162,28 @@ for (site_nu in 1:length(site_numbers)){
   tipsbystorm.i <- Rain.events.i$tipsbystorm
   
   # - 4 Compute intensities
-  StormSummary.i <- RMintensity(df=tipsbystorm.i, date="pdate", 
-                                df.events=Rain.event.list.i, depth="rain", 
-                                xmin=c(5,10,15,30,60))
-  
+  StormSummary.i <- RMintensity(df=tipsbystorm.i, date="pdate", rain = "rain",
+                                df.events=Rain.event.list.i, depth="rain",
+                                xmin = c(5,10,15,30,60))
+
   # - 5 Compute erosivity index
   # method 1
-  StormSummary.i <- RMerosivity(df=tipsbystorm.i, ieHr=ieHr, rain="rain", 
+  StormSummary.i <- RMerosivity(df=tipsbystorm.i, ieHr=ieHr, rain="rain",
                               StormSummary=StormSummary.i, method=1)
   StormSummary.i <- rename(StormSummary.i, 'erosivity_m1' = "erosivity", 'energy_m1' = 'energy')
   # method 2
-  StormSummary.i <- RMerosivity(df= tipsbystorm.i, ieHr=ieHr, rain="rain", 
+  StormSummary.i <- RMerosivity(df= tipsbystorm.i, ieHr=ieHr, rain="rain",
                               StormSummary=StormSummary.i, method=2)
   StormSummary.i <- rename(StormSummary.i, 'erosivity_m2' = "erosivity", 'energy_m2' = 'energy')
-  
+
   # - 6 Compute antecedent rainfall using `RMarf`
-  StormSummary.i <- RMarf(df = Rain.uv, date = 'pdate', df.events = StormSummary.i, 
+  StormSummary.i <- RMarf(df = rain.uv.i, date = 'pdate', df.events = StormSummary.i,
                           days = antecedentDays, varnameout = "ARFdays")
-  
+
   #Save output to list
   StormSummary_list[[site_nu]] <- StormSummary.i
   names(StormSummary_list)[site_nu] <- site_numbers[site_nu]
-  
+
   print(site_nu)
 }
 
@@ -208,7 +219,7 @@ rain_allsites.TS <- ggplot(StormSummary_df, aes(x=StartDate, xend=StartDate, yen
 
 print(rain_allsites.TS)
   
-ggsave(file.path(path_to_results, 'Figures', 'Rain', 'Rain_Timeseries_stormsizes_bothsources_v2.png'),
+ggsave(file.path(path_to_results, 'Figures', 'Rain', 'Rain_Timeseries_stormsizes_NWIS.png'),
        rain_allsites.TS, height=12, width = 10, units='in')
 
 #Histogram
@@ -224,9 +235,7 @@ rain_allsites.hist <- ggplot(StormSummary_df, aes(x=rain)) +
 
 print(rain_allsites.hist)
 
-ggsave(file.path(path_to_results, 'Figures', 'Rain', 'Rain_Histograms_stormsizes_bothsources.png'), rain_allsites.hist, height=12, width = 6, units='in')
-
-
+ggsave(file.path(path_to_results, 'Figures', 'Rain', 'Rain_Histograms_stormsizes_NWIS.png'), rain_allsites.hist, height=12, width = 6, units='in')
 
 #End
 

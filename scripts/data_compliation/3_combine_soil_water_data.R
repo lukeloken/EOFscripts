@@ -79,8 +79,9 @@ data_merge_2016 <- data_WQformerge %>%
 data_merge2 <- data_WQformerge %>%
   dplyr::select(wateryear, Site, all_of(wq_vars), peak_discharge, rain) %>%
   group_by(Site) %>%
-  summarise_at(concvars, 
-               funs(weighted.mean(., runoff_volume, na.rm=T))) %>%
+  summarise(across(concvars, 
+               ~ weighted.mean(., runoff_volume, na.rm=T)), 
+            .groups = "drop") %>%
   left_join(soil_0_15, by = "Site") %>%
   # drop_na(Manure) %>%
   # left_join(data_merge_median[c('Site', 'runoff_volume', 'runoff_volume_cubicfootperAcre', 
@@ -194,7 +195,7 @@ plot_list_yield <- glm_list_yield <- list()
 model_fig_yield <- model_data_yield <- list()
 
 pls_list_yield <- pca_list_yield <- pls_plot_yield <- list()
-
+glm_best_yield <- best_fig_plot_yield <- best_var_fig_yield <- list() 
 for (wq_var in 1:length(choice_yields)) {
   
   var_list <- list()
@@ -285,6 +286,27 @@ for (wq_var in 1:length(choice_yields)) {
   
   print(model_fig_yield[[wq_var]])
   
+  #Extract glm predictors
+  coefficients_i <- glm_list_yield[[wq_var]]$BestModel$coefficients
+  names_i <- names(coefficients_i)
+  pvalues_i <- as.numeric(print(glm_list_yield[[wq_var]])[,4])
+  
+  table_i <- data.frame(variable = names_i,
+                        estimate = coefficients_i,
+                        p_value = pvalues_i, 
+                        row.names = NULL)
+  glm_best_yield[[wq_var]] <- table_i
+  
+  original_names <- gsub("TRUE", "", names_i[-1])
+  
+  best_var_fig_i <- var_list[which(choice_soil %in% original_names)] 
+  
+  best_fig_plot_yield <- grid.arrange(grobs=best_var_fig_i, nrow=1, left = choice_yields[wq_var])
+  
+  best_var_fig_yield[[wq_var]] <- best_var_fig_i
+  
+  ggsave(file=file_out(file.path(path_to_results, 'Figures', 'Soil', 'BestPredictors', paste0("BestPredictors_", choice_yields[wq_var], ".png"))), best_fig_plot_yield, height=4, width=8)
+  
   #pls
   pls_formula <- formula(paste(choice_yields[wq_var], " ~ ", 
                                paste(names(data.glm)[1:(ncol(data.glm)-1)], collapse = "+") ))
@@ -324,6 +346,7 @@ glm_list_conc <- list()
 glm_best_conc <- list()
 model_fig_conc <- list()
 model_data_conc <- list()
+best_var_fig <- list()
 for (wq_var in 1:length(choice_conc)) {
   
   var_list <- list()
@@ -419,13 +442,19 @@ for (wq_var in 1:length(choice_conc)) {
   
   best_var_fig_i <- var_list[which(choice_soil %in% original_names)] 
   
-  grid.arrange(grobs=best_var_fig_i, nrow=1, left = choice_conc[wq_var])
+  best_fig_plot <- grid.arrange(grobs=best_var_fig_i, nrow=1, left = choice_conc[wq_var])
+  
+  best_var_fig[[wq_var]] <- best_var_fig_i
+  
+  ggsave(file=file_out(file.path(path_to_results, 'Figures', 'Soil', 'BestPredictors', paste0("BestPredictors_", choice_conc[wq_var], ".png"))), best_fig_plot, height=4, width=8)
   
 }
 
 names(glm_list_conc)<-choice_conc
 glm_list_conc
 print(model_fig_conc)
+
+grid.arrange(grobs=best_var_fig[[3]], nrow=1, left = choice_conc[3])
 
 print(model_fig_conc[1])
 glm_list_conc[1]

@@ -105,7 +105,7 @@ rain_sites <- site_table$USGSSiteNumberforPrecipitation
 rain_sites_unique <- unique(rain_sites)
 # rain_sites_unique <- c("423740088592701")
 
-start_date <- as.Date(min(site_table$ApproxStartDate, na.rm=T)) - 30
+start_date <- as.Date("2002-01-01")
 end_date <- Sys.Date()
 parameterCd <- "00045"  # Precipitation
 
@@ -159,13 +159,14 @@ names(Rain.uv)[grep('site_no', names(Rain.uv), ignore.case = TRUE)] <- 'rain_sit
 #   filter(!is.na(rain))
 
 Rain.uv.combined <- Rain.uv %>% 
+  # full_join(Rain.uv2) %>%
   select(rain_site, pdate, rain) %>%
   # bind_rows(df.raw.prep.all) %>%
   distinct() %>%
   arrange(rain_site, pdate) %>%
   filter(!is.na(rain))
 
-# saveRDS(Rain.uv.combined, file.path(path_to_data, 'compiled_data', 'rain', 'Compiled_Rain_UV_Data.rds'))
+saveRDS(Rain.uv.combined, file.path(path_to_data, 'compiled_data', 'rain', 'Compiled_Rain_UV_DataPublication.rds'))
 
 
 
@@ -228,7 +229,7 @@ StormSummary_df <- bind_rows(StormSummary_list, .id = "rain_site")%>%
 # 7. Save output and figures 
 
 #Save object
-# saveRDS(StormSummary_df, file.path(path_to_data, 'compiled_data', 'rain', 'Compiled_Rain_Data.rds'))
+saveRDS(StormSummary_df, file.path(path_to_data, 'compiled_data', 'rain', 'DataPublication_Compiled_Rain_Data.rds'))
 
 
 
@@ -243,7 +244,7 @@ rain_allsites.TS <- ggplot(StormSummary_df, aes(x=StartDate, xend=StartDate,
   theme(legend.position='bottom', legend.title = element_blank()) +
   ggtitle('Storm Size: NWIS and raw files') +
   scale_y_sqrt(limits=c(0, NA), expand=c(0, 0)) +
-  scale_x_datetime(date_breaks = 'years', date_labels = "%Y", minor_breaks = NULL) + 
+  scale_x_datetime(date_breaks = '2 years', date_labels = "%Y", minor_breaks = "1 year") + 
   theme(strip.background = element_rect(fill=NA, color=NA)) +
   labs(x = "Calendar year", y = "Rain (in)") +
   geom_text(aes(x=min(StartDate, na.rm=T), y=max(rain, na.rm=T), label=rain_site),
@@ -253,12 +254,12 @@ print(rain_allsites.TS)
   
 ggsave(file.path(path_to_results, 'Figures', 'DataPublication', 
                  'Rain_Timeseries_stormsizes_NWIS.png'),
-       rain_allsites.TS, height=12, width = 14, units='in')
+       rain_allsites.TS, height=12, width = 18, units='in')
 
 #Histogram
 rain_allsites.hist <- ggplot(StormSummary_df, aes(x=rain, fill = AllProjects)) +
   geom_histogram(bins=20) +
-  facet_wrap(~AllFieldNames, ncol=4, scales='free_y') +
+  facet_wrap(~AllFieldNames, ncol=5, scales='free_y') +
   theme_bw() +
   theme(legend.position='bottom') +
   guides(fill = guide_legend(nrow=1)) +

@@ -7,6 +7,15 @@ library(ggrepel)
 #Site data
 master_beforeafter_df <- readRDS(file.path(path_to_data, 'compiled_data', 'rain', 'Compiled_Masters.rds'))
 
+#GIS data
+gis_combined <- readRDS(file.path(path_to_data, 'compiled_data', 'GIS_Compiled.rds'))
+
+master_areas <- master_beforeafter_df %>%
+  select(site, state) %>%
+  left_join(select(gis_combined, site, Area_acres)) %>%
+  mutate(Type = case_when(grepl("SW", site) ~ "SW",
+                          grepl("TL", site) ~ "TL"))
+
 #Data ready for modeling
 data_df <- readRDS(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_model_data.rds" )))
 
@@ -59,8 +68,8 @@ rain_allsites.TS <- ggplot(StormSummary_df, aes(x=StartDate, xend=StartDate, yen
 
 print(rain_allsites.TS)
 
-ggsave(file.path(path_to_results, 'Figures', 'Rain', 'Rain_Timeseries_stormsizes_bothsources_v2.png'),
-       rain_allsites.TS, height=12, width = 10, units='in')
+# ggsave(file.path(path_to_results, 'Figures', 'Rain', 'Rain_Timeseries_stormsizes_bothsources_v2.png'),
+#        rain_allsites.TS, height=12, width = 10, units='in')
 
 #Histogram
 rain_allsites.hist <- ggplot(StormSummary_df, aes(x=rain)) +
@@ -75,7 +84,7 @@ rain_allsites.hist <- ggplot(StormSummary_df, aes(x=rain)) +
 
 print(rain_allsites.hist)
 
-ggsave(file.path(path_to_results, 'Figures', 'Rain', 'Rain_Histograms_stormsizes_bothsources.png'), rain_allsites.hist, height=12, width = 6, units='in')
+# ggsave(file.path(path_to_results, 'Figures', 'Rain', 'Rain_Histograms_stormsizes_bothsources.png'), rain_allsites.hist, height=12, width = 6, units='in')
 
 
 
@@ -175,12 +184,20 @@ for (site_nu in 1:length(all_sites)){
   ggsave(file.path(path_to_results, 'Figures', 'Rain_Runoff_TS', paste(site_name, '.png', sep='')),
          plot_out, height=7, width=6, units='in')
   
-  rain_new_list[[site_nu]] <- rain_df_i
-  flow_new_list[[site_nu]] <- flow_df_i
+  rain_new_list[[site_nu]] <- rain_df_i %>%
+    filter(StartDate>= start_date & EndDate <= end_date)
+  
+  flow_new_list[[site_nu]] <- flow_df_i %>%
+    filter(storm_start>= start_date & storm_end <= end_date)
+  
   
 }
 
 names(rain_new_list) <- names(flow_new_list) <- all_sites
+
+
+
+
 
 #Bind list together
 rain_new_df <- bind_rows(rain_new_list, .id = site_name) %>%
@@ -209,6 +226,55 @@ flow_new_df <- bind_rows(flow_new_list, .id = site_name) %>%
   filter(!is.na(storm_start) & !is.na(runoff_volume))
 
 
+rain_total_summary <- rain_new_df %>% 
+  mutate(wateryear = getWY(StartDate),
+         month = month(StartDate)) %>%
+  group_by(site, wateryear) %>%
+  summarize(rain = sum(rain, na.rm=T)) %>%
+  left_join(master_areas) %>%
+  mutate(rain_volume = rain*Area_acres*43560/12)
+
+flow_total_summary <- flow_new_df %>% 
+  mutate(wateryear = getWY(storm_start),
+         month = month(storm_start)) %>%
+  group_by(site, wateryear) %>%
+  summarize(runoff_volume = sum(runoff_volume, na.rm=T))
+
+rain_flow_out <- full_join(rain_total_summary, flow_total_summary)  %>%
+  mutate(runoff_index = runoff_volume/rain_volume) %>%
+  distinct() %>%
+  mutate(state = factor(state, c("OH", "IN", "MI", "NY", "WI"))) %>%
+  arrange(state, site) 
+
+site_order <- unique(rain_flow_out$site)
+
+rain_flow_out <- rain_flow_out %>%
+  mutate(site = factor(site, unique(site_order)))
+  
+
+
+runoff_index <- ggplot(rain_flow_out, aes(x = site, y = runoff_index, 
+                          fill = state, alpha = Type)) +
+  geom_jitter(width=0, height=0, aes(col=state), alpha=1, shape=21) + 
+  geom_boxplot(outlier.shape = NA) +
+  theme_bw() + 
+  # scale_fill_discrete(na.translate = F) +
+  # scale_color_discrete(guide = FALSE, na.translate = F) +
+  scale_alpha_manual(values = c(.5,0.1), guide = FALSE) + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(y = 'Runoff index') + 
+  # scale_y_log10() +  
+  # geom_text(aes(label = wateryear), colour = 'darkgrey',
+  #           alpha = 1, size = 5,
+  #           show.legend = FALSE) +
+  ggtitle(expression(paste(Sigma, " annual runoff / ", Sigma, " annual rain"))) +
+  scale_color_brewer(palette='Set1', guide='none') + 
+  scale_fill_brewer(palette='Set1', na.translate = F) 
+
+runoff_index
+
+ggsave(filename = file.path(path_to_results, 'Figures', 'Rain', 'RunoffIndexSum.png'), runoff_index, height = 4, width = 6)
+
 
 ggplot(rain_new_df,aes(x=rain, fill=DidItFlow, col=DidItFlow)) + 
   # geom_density(alpha=0.25) +
@@ -220,7 +286,8 @@ ggplot(rain_new_df,aes(x=rain, fill=DidItFlow, col=DidItFlow)) +
   facet_wrap(~site, scales='free') +
   theme_bw() +
   theme(strip.background = element_rect(fill=NA, color=NA)) +
-  theme(legend.position = 'bottom')
+  theme(legend.position = 'bottom') +
+  
 
 
 ggplot(flow_new_df,aes(x=runoff_volume, fill=DidItRain, col=DidItRain)) + 
@@ -303,3 +370,7 @@ rainless_TS <- ggplot(flow_missingrain_df_model, aes(x=storm_start, y=site, col=
 
 ggsave(filename = file.path(path_to_results, 'Figures', 'Rain', 'FlowEventsMissingRain.png'), rainless_TS)
   
+
+
+
+

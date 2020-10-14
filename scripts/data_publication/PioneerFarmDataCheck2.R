@@ -3,16 +3,11 @@ library(lubridate)
 
 project <- "PioneerFarm"
 
-path_to_site <- "C:/Users/lloken/DOI/GS-UMid GLRI EOF - Data Publication"
+# path_to_site <- "C:/Users/lloken/DOI/GS-UMid GLRI EOF - Data Publication"
 
 #Site data with gage IDs
-site_table <- read_excel(file.path(path_to_site, "EOF_Site_Table.xlsx")) %>%
-  filter(!is.na(`USGS Site Number`))
-
-names(site_table) <- gsub(" ", "", names(site_table))
-
 site_table_i <- site_table %>%
-  mutate(across(c(ApproxStartDate, ApproxEndDate), as.Date)) %>%
+  # mutate(across(c(ApproxStartDate, ApproxEndDate), as.Date)) %>%
   filter(Project == project)
 
 
@@ -23,11 +18,17 @@ site_table_i <- site_table %>%
 # rain_sites <- site_table$USGSSiteNumberforPrecipitation
 # 
 
-
+#Prepare files for reading
 files <- list.files(file.path(path_to_data, "Approved_Site_Data",
                                     "Pioneer Farm"), full.names = TRUE)
 
-files <- files[grepl('compiled', files)]
+# files <- files[grepl('compiled', files)]
+
+files <- files[!grepl('compiled', files)]
+files <- files[!grepl('site.summary.report', files)]
+names <- gsub("P:/0301/Approved_Site_Data/Pioneer Farm/", "", files)
+names <- gsub(" storm event data.csv", "", names)
+
 
 file_nu <- 1
 data_list <- list()
@@ -53,21 +54,33 @@ for (file_nu in 1:length(files)){
   # }
 
   
-  data_list[[file_nu]] <- data_i
+  data_list[[file_nu]] <- data_i %>%
+    mutate(across(contains("flag"), as.character))
+  
+  names(data_list)[file_nu] <- names[file_nu]
+  
+  
 }
 
+data_df <- data_list %>%
+  bind_rows(.id = "FieldName") %>%
+  mutate(site = sub("[^0-9.-]", "", site)) %>%
+  left_join(select(site_table_i, USGSSiteNumber, FieldName, Area),
+            by = c("FieldName", "site" = "USGSSiteNumber")) %>%
+  select(site, FieldName, everything())
 
-    data_df <- data_list[[1]] %>%
-      mutate(site = gsub("'", "", site)) %>%
-      left_join(select(site_table_i, USGSSiteNumber, FieldName, Area), 
-                by = c("site" = "USGSSiteNumber"))
-      
+
+    # data_df <- data_list[[1]] %>%
+    #   mutate(site = gsub("'", "", site)) %>%
+    #   left_join(select(site_table_i, USGSSiteNumber, FieldName, Area),
+    #             by = c("site" = "USGSSiteNumber"))
+
     head(data_df)
     names(data_df)
     summary(data_df)
     table(data_df$site)
 
-    
+    filter(data_df, runoff_volume<0.05)
     
     # #########################################################
     # unite columns that have the same data, but different names
@@ -285,7 +298,7 @@ for (file_nu in 1:length(files)){
     
     site_summary_report <- data_df_new %>%
       filter(!is.na(storm_start), !is.na(storm_end)) %>%
-      group_by(site, estimated) %>%
+      group_by(site, FieldName, estimated) %>%
       dplyr::summarise(first_storm = as.Date(min(storm_start, na.rm=T)),
                        last_storm = as.Date(max(storm_start, na.rm=T)),
                        number_of_storms = n(),
@@ -301,7 +314,7 @@ for (file_nu in 1:length(files)){
                                                   site_summary_report$number_of_storms)
     
     site_summary_report2 <- site_summary_report %>%
-      group_by(site) %>%
+      group_by(site, FieldName) %>%
       summarize_at(vars(number_of_storms:Number_Measured), sum, na.rm=T) %>%
       mutate(fraction_volume = round(Volume_Measured / (Volume_Measured + Volume_Estimated),2),
              fraction_number = round(Number_Measured / (Number_Measured + Number_Estimated),2)) %>%
@@ -309,9 +322,10 @@ for (file_nu in 1:length(files)){
                   group_by(site) %>%
                   summarize(first_storm = min(first_storm, na.rm=T),
                             last_storm = max(last_storm, na.rm=T))) %>%
-      select(site, first_storm, last_storm, number_of_storms, Number_Measured, Number_Estimated, fraction_number, Volume_Measured, Volume_Estimated, fraction_volume, everything())
+      select(site, FieldName, first_storm, last_storm, number_of_storms, Number_Measured, Number_Estimated, fraction_number, Volume_Measured, Volume_Estimated, fraction_volume, everything()) %>%
+      arrange(FieldName)
     
-    print(data.frame(site_summary_report2[,1:3]))
+    print(data.frame(site_summary_report2[,1:4]))
     print(data.frame(site_summary_report2))
     
     
@@ -323,8 +337,20 @@ for (file_nu in 1:length(files)){
     }
     
     
-    # write.csv(site_summary_report2, file=(file_out(file.path(path_to_data, "compiled_data", "compiled_summary_report.csv" ))), row.names=F)
+    #Save a compiled version and summary report in the data folder. 
+    # write.csv(data_df_compiled, file=(file.path(path_to_data,
+    #                                             "Approved_Site_Data",
+    #                                             "Sand County",
+    #                                             paste0(project, ".storm.event.data.compiled.csv" ))),
+    #           row.names=F)
     
+    
+    write.csv(site_summary_report2, 
+              file=(file.path(path_to_data,
+                              "Approved_Site_Data",
+                              "Pioneer Farm",
+                              paste0(project, ".site.summary.report.csv"))),
+              row.names=F)
     
     # #############################################
     # Plot calculated versus reported concentration
@@ -412,9 +438,9 @@ for (file_nu in 1:length(files)){
         scale_color_manual(values=c('black', 'red')) + 
         geom_abline() +
         theme_bw() +
-        scale_x_log10(name='reported concentrations (if flag contains <, halfed value in conc column)') +
-        scale_y_log10(name='calculated from load') +
-        ggtitle(concvars[var_i]) +
+        scale_x_log10nice(name='reported concentrations (if flag contains <, halfed value in conc column)') +
+        scale_y_log10nice(name='calculated from load') +
+        ggtitle(paste(Sys.Date(), concvars[var_i])) +
         theme(legend.position = 'none') +
         geom_text(data=mms.cor, aes(x=0, y=Inf, label=n), 
                   colour="black", inherit.aes=FALSE, parse=FALSE, hjust = 0, vjust = 1)
@@ -471,18 +497,18 @@ for (file_nu in 1:length(files)){
  
     
     
-    common_vars <- c("site", "storm_start", "storm_end",
-                     "peak_discharge", "runoff_volume")
-    
-    approved_vars <- c("discrete", "estimated", "exclude", 
-                       "frozen", "unique_storm_number", "storm")
-    
-    
-    rain_vars <- c("rain", "duration", "Ievent", 
-                   "I5", "I10", "I15", 
-                   "I30", "I60", "energy_m1", 
-                   "erosivity_m1", "energy_m2", "erosivity_m2",
-                   "weq")
+    # common_vars <- c("site", "FieldName", "storm_start", "storm_end",
+    #                  "peak_discharge", "runoff_volume")
+    # 
+    # approved_vars <- c("discrete", "estimated", "exclude", 
+    #                    "frozen", "unique_storm_number", "storm")
+    # 
+    # 
+    # rain_vars <- c("rain", "duration", "Ievent", 
+    #                "I5", "I10", "I15", 
+    #                "I30", "I60", "energy_m1", 
+    #                "erosivity_m1", "energy_m2", "erosivity_m2",
+    #                "weq")
     
     data_df_approved <- data_df_withconc %>%
       rename(tkn_filtered_conc_mg_l = "tkn_filtered_00623_mg_l", 
@@ -498,45 +524,18 @@ for (file_nu in 1:length(files)){
                        all_of(c(common_vars, approved_vars, loadvars, 
                                 concvars, flagvars, yieldvars)))) %>%
       filter(exclude == 0) %>%
-      select(site, discrete, estimated, frozen, storm, 
+      mutate(project = project) %>%
+      select(site, FieldName, project, discrete, estimated, frozen, storm, 
              unique_storm_number, storm_start, storm_end, runoff_volume, peak_discharge, 
              everything()) 
     
     
-    data_df_approved2$storm[grepl("SW", data_df_approved2$site) & 
-                              is.na(data_df_approved2$storm)] <- 1
+    # data_df_approved2$storm[is.na(data_df_approved2$storm)] <- 1
     
     
     str(data_df_approved2)
     
-    #Clean up model df
-    data_df_model2 <- data_df_model %>%
-      select(intersect(names(data_df_model),
-                       all_of(c(common_vars, rain_vars)))) %>%
-      select(site, storm_start, storm_end, runoff_volume, peak_discharge, 
-             rain, weq, everything())
-    
-    data_df_model2$duration[data_df_model2$duration <= 0.01666667 & 
-                              data_df_model2$rain == 0] <- 0
-    
-    
-    str(data_df_model2)
-    
-    data_df_publish <- left_join(data_df_approved2, data_df_model2, 
-                                 by = all_of(common_vars)) %>%
-      select(-exclude, -unique_storm_number) %>%
-      arrange(site, storm_start) %>%
-      mutate(across(contains("load"), round, 3),
-             across(contains("yield"), round, 5),
-             across(contains("energy"), round, 1),
-             across(contains("erosivity"), round, 3),
-             Ievent = round(Ievent, 5),
-             weq = round(weq, 2))
-    
-    head(data_df_publish)
-    
-    str(data_df_publish)
-    
-    
-    
+    saveRDS(data_df_approved2, file.path(path_to_data, "Data Publication", 
+                                         "CleanedFinalVersions", 
+                                         paste0(project, "_StormEventLoadsFormatted.rds")))
     

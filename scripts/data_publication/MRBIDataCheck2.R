@@ -3,18 +3,8 @@ library(lubridate)
 
 project <- "MRBI"
 
-path_to_site <- "C:/Users/lloken/DOI/GS-UMid GLRI EOF - Data Publication"
-
-#Site data with gage IDs
-site_table <- read_excel(file.path(path_to_site, "EOF_Site_Table.xlsx")) %>%
-  filter(!is.na(`USGS Site Number`))
-
-names(site_table) <- gsub(" ", "", names(site_table))
-
 site_table_i <- site_table %>%
-  mutate(across(c(ApproxStartDate, ApproxEndDate), as.Date)) %>%
   filter(Project == project)
-
 
 
 files <- list.files(file.path(path_to_data, "Approved_Site_Data",
@@ -22,11 +12,9 @@ files <- list.files(file.path(path_to_data, "Approved_Site_Data",
 
 # files <- files[grepl('compiled', files)]
 files <- files[grepl('compiled', files)==FALSE]
+files <- files[grepl('site.summary', files)==FALSE]
 
-names <- list.files(file.path(path_to_data, "Approved_Site_Data",
-                              "MRBI"))
-names <-  names[-grepl('compiled', names)]
-
+names <- gsub("P:/0301/Approved_Site_Data/MRBI/", "", files)
 names <- gsub(" storm event data.csv", "", names)
 
 
@@ -45,7 +33,8 @@ for (file_nu in 1:length(files)){
                                 format = c("%m/%d/%Y %H:%M")))) %>%
     mutate(file_name = names[file_nu]) %>%
     mutate(site = as.character(site)) %>%
-    mutate(site = gsub("'", "", site))
+    mutate(site = gsub("'", "", site)) %>%
+    mutate(site = gsub("\"", "", site))
 
 if ('storm_runoff' %in% names(data_i)){
   data_i <- dplyr::mutate(data_i, runoff_volume = storm_runoff) %>%
@@ -62,93 +51,25 @@ data_df <- data_list %>%
   select(-file_nu) %>%
   mutate(site = as.character(site)) %>%
   mutate(site = gsub("'", "", site)) %>%
-  left_join(select(site_table, USGSSiteNumber, FieldName), 
-            by = c("site" = "USGSSiteNumber")) %>%
   select(site, FieldName, everything()) %>%
-  left_join(select(site_table_i, FieldName, Area, USGSSiteNumber), 
-            by = c("FieldName", "site" = "USGSSiteNumber"))
+  left_join(select(site_table_i, Area, USGSSiteNumber), 
+            by = c("site" = "USGSSiteNumber"))
 
 summary(data_df$runoff_volume)
+
+filter(data_df, runoff_volume<0.05)
+
 
     head(data_df)
     names(data_df)
     summary(data_df)
     
-
+    
+    
     # #########################################################
     # unite columns that have the same data, but different names
+    # Preferred column names are in "DataPublicationWorkflow.R"
     # #########################################################
-    
-    #Preferred load names
-    loadvars <- c('suspended_sediment_load_pounds', 
-                  'chloride_load_pounds',
-                  'no2_no3n_load_pounds', 
-                  'ammonium_n_load_pounds',
-                  'tkn_unfiltered_load_pounds', 
-                  'orthophosphate_load_pounds',
-                  'tp_unfiltered_load_pounds',
-                  'total_nitrogen_load_pounds',
-                  'organic_nitrogen_load_pounds',
-                  'doc_load_pounds', 
-                  'toc_load_pounds', 
-                  "tkn_filtered_load_pounds",  
-                  "tp_dissolved_filtered_load_pounds",
-                  "total_dissolved_solids_load_pounds",    
-                  "total_solids_load_pounds",     
-                  "total_suspended_solids_load_pounds",   
-                  "total_volatile_suspended_solids_load_pounds")
-    
-    #Preferred concentration names
-    concvars <- c('suspended_sediment_conc_mgL', 
-                  'chloride_conc_mgL',
-                  'no2_no3_n_conc_mgL', 
-                  'ammonium_n_conc_mgL',
-                  'tkn_unfiltered_conc_mgL', 
-                  'orthophosphate_conc_mgL',
-                  'total_phosphorus_conc_mgL',
-                  'total_nitrogen_conc_mgL',
-                  'organic_nitrogen_conc_mgL',
-                  'doc_conc_mgL',
-                  'toc_conc_mgL',    
-                  "tkn_filtered_00623_mg_l",    
-                  "tp_dissolved_filtered_00666_mg_l",
-                  "total_dissolved_solids_70300_mg_l",   
-                  "total_solids_00500_mg_l",   
-                  "total_suspended_solids_00530_mg_l", 
-                  "total_volatile_suspended_solids_00535_mg_l")
-    
-    #Preferred yield names
-    yieldvars <- c('suspended_sediment_yield_pounds_per_acre', 
-                   'chloride_yield_pounds_per_acre',
-                   'no2_no3n_yield_pounds_per_acre', 
-                   'ammonium_n_yield_pounds_per_acre',
-                   'tkn_unfiltered_yield_pounds_per_acre', 
-                   'orthophosphate_yield_pounds_per_acre',
-                   'tp_unfiltered_yield_pounds_per_acre',
-                   'total_nitrogen_yield_pounds_per_acre',
-                   'organic_nitrogen_yield_pounds_per_acre',
-                   'doc_yield_pounds_per_acre', 
-                   'toc_yield_pounds_per_acre',
-                   "tkn_filtered_yield_pounds_per_acre",
-                   "tp_dissolved_filtered_yield_pounds_per_acre",
-                   "total_dissolved_solids_yield_pounds_per_acre",    
-                   "total_solids_yield_pounds_per_acre",     
-                   "total_suspended_solids_yield_pounds_per_acre",   
-                   "total_volatile_suspended_solids_yield_pounds_per_acre")
-    
-
-    
-    flagvars <- c("flag_suspended_sediment", "flag_chloride", "flag_no2_no3n", 
-                  "flag_ammonium_n", "flag_tkn_unfiltered", "flag_orthophosphate",
-                  "flag_tp_unfiltered", "flag_tn", "flag_orgN", "flag_doc", "flag_toc",
-                  "flag_tkn_filtered",    
-                  "flag_tp_dissolved_filtered",
-                  "flag_total_dissolved_solids",   
-                  "flag_total_solids",   
-                  "flag_total_suspended_solids", 
-                  "flag_total_volatile_suspended_solids")
-    
-    
     
     #Identify multiple columns for each variable and data type
     sediment_names <- names(data_df)[grepl('sediment', names(data_df), ignore.case=T)]
@@ -308,12 +229,12 @@ summary(data_df$runoff_volume)
     }
     }
     
-    # head(data_df_new)
-        
     
     # ##############################
     #look at data
     # ##############################
+    
+    # head(data_df_new)
     
     site_summary_report <- data_df_new %>%
       filter(!is.na(storm_start), !is.na(storm_end)) %>%
@@ -355,8 +276,20 @@ summary(data_df$runoff_volume)
     }
     
     
-    # write.csv(site_summary_report2, file=(file_out(file.path(path_to_data, "compiled_data", "compiled_summary_report.csv" ))), row.names=F)
+    #Save a compiled version and summary report in the data folder. 
+    # write.csv(data_df_compiled, file=(file.path(path_to_data,
+    #                                             "Approved_Site_Data",
+    #                                             "MRBI",
+    #                                             paste0(project, ".storm.event.data.compiled.csv" ))),
+    #           row.names=F)
     
+    
+    write.csv(site_summary_report2, 
+              file=(file.path(path_to_data,
+                              "Approved_Site_Data",
+                              "MRBI",
+                              paste0(project, ".site.summary.report.csv"))),
+              row.names=F)
     
     # #############################################
     # Plot calculated versus reported concentration
@@ -403,7 +336,7 @@ summary(data_df$runoff_volume)
                                names_list[[var_i]][grepl("yield", names_list[[var_i]])])
         
         data_df_withconc_i <- data_df_withconc %>% 
-          select(site, unique_storm_number, all_of(c(used_vars[var_i], 
+          select(site, FieldName, unique_storm_number, all_of(c(used_vars[var_i], 
                                                      calc_vars[var_i], 
                                                      yield_new[var_i],
                                                      yield_org,
@@ -435,7 +368,7 @@ summary(data_df$runoff_volume)
         # filter(site != 'MI-TL2')
         
         mms.cor <- ddply(.data=data_df_withconc_i, 
-                         .(site), 
+                         .(FieldName), 
                          summarize, 
                          n=paste(" n =", length(which(is.finite(diff)))))
         
@@ -443,9 +376,9 @@ summary(data_df$runoff_volume)
       
       plot_list[[var_i]] <- ggplot(data_df_withconc_i, 
                                    aes_string(x=used_vars[var_i], y=calc_vars[var_i])) + 
-        facet_wrap(~site, nrow = 1) +
+        facet_wrap(~FieldName, nrow = 1) +
         # facet_wrap(~site, scales='free', nrow = 4) +
-        geom_point(aes(fill=site), alpha=.6, size=.5, shape=21, stroke=NA) +
+        geom_point(aes(fill=FieldName), alpha=.6, size=.5, shape=21, stroke=NA) +
         geom_text_repel(aes(label = label, colour=flag_yes),
                         alpha=.5, segment.size=.5, size=3, box.padding = 1) +
         scale_color_manual(values=c('black', 'red')) + 
@@ -453,7 +386,7 @@ summary(data_df$runoff_volume)
         theme_bw() +
         scale_x_log10(name='reported concentrations (if flag contains <, halfed value in conc column)') +
         scale_y_log10(name='calculated from load') +
-        ggtitle(concvars[var_i]) +
+        ggtitle(paste(Sys.Date(), concvars[var_i])) +
         theme(legend.position = 'none') +
         geom_text(data=mms.cor, aes(x=0, y=Inf, label=n), 
                   colour="black", inherit.aes=FALSE, parse=FALSE, hjust = 0, vjust = 1)
@@ -464,13 +397,13 @@ summary(data_df$runoff_volume)
              plot_list[[var_i]], height=4, width=10, units='in')
       
       
-      plot_list2[[var_i]] <- ggplot(data_df_withconc_i, aes(y=diff, x=site, group=site, fill=site)) +
+      plot_list2[[var_i]] <- ggplot(data_df_withconc_i, aes(y=diff, x=FieldName, group=FieldName, fill=FieldName)) +
         geom_hline(yintercept = sig_digits) + 
-        geom_jitter(aes(color=site), width= .1, height=0, alpha=.4) + 
+        geom_jitter(aes(color=FieldName), width= .1, height=0, alpha=.4) + 
         # geom_boxplot(aes(group=site), alpha=.6, outlier.shape = NA) +
         scale_y_sqrt(limits=c(0,NA), name='abs difference between calculated and reported') +
         # scale_y_continuous(limits=c(0,5)) +
-        geom_text_repel(aes(label = label2, color = site),
+        geom_text_repel(aes(label = label2, color = FieldName),
                         alpha=.5, segment.size=.5, size=3) +
         theme_bw() +
         theme(legend.position='none', axis.text.x = element_text(angle=90),
@@ -480,14 +413,14 @@ summary(data_df$runoff_volume)
       # print(plot_list2[[var_i]])
       
       ggsave(file.path(path_to_results, 'Figures', 'ConcentrationTesting', 'MRBI', paste0('MRBI_', concvars[var_i], '_Diff.png')),
-             plot_list2[[var_i]], height=5, width=5, units='in')
+             plot_list2[[var_i]], height=4, width=5, units='in')
       
       #yields
       plot_list3[[var_i]] <- ggplot(data_df_withconc_i, 
                                     aes_string(y=yield_new[var_i], x=yield_org)) + 
-        facet_wrap(~site, nrow = 1) +
+        facet_wrap(~FieldName, nrow = 1) +
         # facet_wrap(~site, scales='free', nrow = 4) +
-        geom_point(aes(fill=site), alpha=.6, size=.5, shape=21, stroke=NA) +
+        geom_point(aes(fill=FieldName), alpha=.6, size=.5, shape=21, stroke=NA) +
         geom_text_repel(aes(label = label3),
                         alpha=.5, segment.size=.5, size=3, box.padding = 1) +
         # scale_color_manual(values=c('black', 'red')) + 
@@ -508,3 +441,36 @@ summary(data_df$runoff_volume)
       }
     }
  
+    
+    
+    data_df_approved <- data_df_withconc %>%
+      rename(#tkn_filtered_conc_mg_l = "tkn_filtered_00623_mg_l", 
+        # tp_dissolved_filtered_conc_mg_l = "tp_dissolved_filtered_00666_mg_l",
+        total_dissolved_solids_conc_mg_l = "total_dissolved_solids_70300_mg_l",
+        # total_solids_conc_mg_l = "total_solids_00500_mg_l",   
+        # total_suspended_solids_conc_mg_l = "total_suspended_solids_00530_mg_l",
+        # total_volatile_suspended_solids_conc_mg_l = "total_volatile_suspended_solids_00535_mg_l"
+        )
+    
+    #Clean up approved df
+    data_df_approved2 <- data_df_approved %>%
+      select(intersect(names(data_df_approved),
+                       all_of(c(common_vars, approved_vars, loadvars, 
+                                concvars, flagvars, yieldvars)))) %>%
+      filter(exclude == 0) %>%
+      mutate(project = project) %>%
+      select(site, FieldName, project, discrete, estimated, frozen, storm, 
+             unique_storm_number, storm_start, storm_end, runoff_volume, peak_discharge, 
+             everything()) 
+    
+    
+    data_df_approved2$storm[!grepl("Tile", data_df_approved2$FieldName) &
+    is.na(data_df_approved2$storm)] <- 1
+    
+    
+    str(data_df_approved2)
+    
+    saveRDS(data_df_approved2, file.path(path_to_data, "Data Publication", 
+                                         "CleanedFinalVersions", 
+                                         paste0(project, "_StormEventLoadsFormatted.rds")))
+    

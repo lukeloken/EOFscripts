@@ -132,32 +132,6 @@ names(Rain.uv)[grep('site_no', names(Rain.uv), ignore.case = TRUE)] <- 'rain_sit
 #***#***#***#***#***#***#***#***#***#***#***#***#***#***#***#***#
 # 3. Combine raw and NWIS data
 
-#Identify overlapping times
-# df.nwis.times <- Rain.uv %>% 
-#   group_by(rain_site) %>%
-#   summarize_at(vars(pdate), list(max=max, min=min), na.rm=T) %>%
-#   filter(rain_site %in% unique(raw_rain_data$rain_site))
-
-# df.raw.prep.1 <- filter(raw_rain_data, rain_site==df.nwis.times$rain_site[1]) %>%
-#   filter(pdate>df.nwis.times$max[1] | pdate<df.nwis.times$min[1])
-# df.raw.prep.2 <- filter(raw_rain_data, rain_site==df.nwis.times$rain_site[2]) %>%
-#   filter(pdate>df.nwis.times$max[2] | pdate<df.nwis.times$min[2])
-# df.raw.prep.3 <- filter(raw_rain_data, rain_site==df.nwis.times$rain_site[3]) %>%
-#   filter(pdate>df.nwis.times$max[3] | pdate<df.nwis.times$min[3])
-# df.raw.prep.4 <- filter(raw_rain_data, rain_site==df.nwis.times$rain_site[4]) %>%
-#   filter(pdate>df.nwis.times$max[4] | pdate<df.nwis.times$min[4])
-# 
-# df.raw.prep.all <- bind_rows(df.raw.prep.1, df.raw.prep.2, 
-#                              df.raw.prep.3, df.raw.prep.4)
-
-#Combine with NWIS data
-# Rain.uv.combined <- Rain.uv %>% 
-#   select(rain_site, pdate, rain) %>%
-#   bind_rows(df.raw.prep.all) %>%
-#   distinct() %>%
-#   arrange(rain_site, pdate) %>%
-#   filter(!is.na(rain))
-
 Rain.uv.combined <- Rain.uv %>% 
   # full_join(Rain.uv2) %>%
   select(rain_site, pdate, rain) %>%

@@ -35,6 +35,8 @@ library(ggrepel)
 
 #load functions
 source('scripts/functions/fxns_data_compilation.R')
+source('scripts/functions/fxns_data_processing.R')
+source('scripts/functions/fxns_rainmaker_edit.R')
 source('scripts/functions/g_legend.R')
 source('scripts/functions/not_all_na.R')
 source('scripts/functions/ScaleYLog10Nice.R')

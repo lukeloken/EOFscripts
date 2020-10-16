@@ -101,8 +101,8 @@ data_df_approved2 <- data_df_approved %>%
                    all_of(c(common_vars, approved_vars, loadvars, 
                             concvars, flagvars, yieldvars)))) %>%
   filter(exclude == 0) %>%
-  left_join(select(master_beforeafter_df, site, discharge_site_no)) %>%
-  select(site, discrete, estimated, frozen, storm, 
+  left_join(select(master_beforeafter_df, site, site_number)) %>%
+  select(site, site_number, discrete, estimated, frozen, storm, 
          unique_storm_number, storm_start, storm_end, runoff_volume, peak_discharge, 
          everything()) 
 
@@ -112,7 +112,7 @@ data_df_approved2$storm[grepl("SW", data_df_approved2$site) &
 
 data_df_approved3 <- data_df_approved2 %>%
   rename(FieldName = site,
-         site = discharge_site_no) %>%
+         site = site_number) %>%
   mutate(project = "GLRI") %>%
   select(site, FieldName, project, discrete, estimated, frozen, storm, exclude,
          unique_storm_number, storm_start, storm_end, runoff_volume, peak_discharge, 
@@ -120,6 +120,8 @@ data_df_approved3 <- data_df_approved2 %>%
 
 head(data_df_approved3)
 str(data_df_approved3)
+summary(data_df_approved3)
+table(data_df_approved3[,1:2])
 
 saveRDS(data_df_approved3, file.path(path_to_data, "Data Publication", 
                                      "CleanedFinalVersions", 

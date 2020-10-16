@@ -2,14 +2,6 @@
 
 # Work flow for data compilation and cross-site analysis
 
-#load functions
-source('scripts/functions/fxns_data_compilation.R')
-source('scripts/functions/g_legend.R')
-source('scripts/functions/not_all_na.R')
-source('scripts/functions/ScaleYLog10Nice.R')
-
-`%notin%` <- Negate(`%in%`)
-
 #load master R files
 source('scripts/data_compliation/1_load_master_data.R')
 

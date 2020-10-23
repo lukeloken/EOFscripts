@@ -20,6 +20,7 @@ approved_files <- approved_files[which(grepl("Management", approved_files)==FALS
 approved_files <- approved_files[which(grepl("_orig", approved_files)==FALSE)]
 approved_files <- approved_files[which(grepl("NYTL", approved_files)==FALSE)]
 approved_files <- approved_files[which(grepl("paired", approved_files)==FALSE)]
+approved_files <- approved_files[which(grepl("storm event data", approved_files))]
 
 
 
@@ -306,7 +307,7 @@ for (var_i in 1:length(names_list)){
 }
 
 # head(data_df_new)
-
+summary(data_df_new)
 
 saveRDS(data_df_new, file=(file_out(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_loads_allsites_approved_data.rds" ))))
 

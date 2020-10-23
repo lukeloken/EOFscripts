@@ -17,6 +17,14 @@ ieHr <- 2
 # Amount it must rain to count as an event in tenths of inches (rain threshold) -- note RMevents_sample does not use rainthresh
 rainthresh <- 0.008
 
+#Storm summaries for all rain events
+StormSummary_df <- readRDS(file.path(path_to_data, 'compiled_data', 'rain', 'DataPublication_Compiled_Rain_Data.rds'))
+
+StormSummary_df_GLRI <- readRDS(file.path(path_to_data, 'compiled_data', 'rain', 'Compiled_Rain_Data.rds')) %>%
+  mutate(AllProjects = "GLRI")
+
+StormSummary_df_combined <- bind_rows(StormSummary_df, StormSummary_df_GLRI)
+
 
 
 #unit rain data for all sites
@@ -89,6 +97,9 @@ saveRDS(wq.precip.df, file.path(path_to_data, "Data Publication",
                                "CleanedFinalVersions", 
                                "All_EOF_StormEventLoadsRainCalculated.rds"))
 
+wq.precip.df <- readRDS(file.path(path_to_data, "Data Publication", 
+                                  "CleanedFinalVersions",
+                                  "All_EOF_StormEventLoadsRainCalculated.rds"))
 
 # View(filter(wq.precip.df, FieldName == 'WI-SW1') %>% select(unique_storm_number, storm_start, storm_end, rain_startdate, rain))
 
@@ -123,8 +134,69 @@ wq.precip.norain <- wq.precip.df %>%
   mutate(USGSSiteNumberforPrecipitation = paste0("'", USGSSiteNumberforPrecipitation),
          site = paste0("'", site)) %>%
   mutate(runoff_index = runoff_volume / (rain * Area * 43560 / 12)) %>%
+  mutate(exclude_rain = ifelse(is.na(rain) | rain == 0 | !is.finite(runoff_index) |runoff_index > 0.5, "1", "0")) %>%
   arrange(project, FieldName, site, storm_start)
 
 write.csv(wq.precip.norain, file.path(path_to_data, "Data Publication", "All.EOF.missingrain.csv"), row.names = FALSE)
 
 table(wq.precip.norain$FieldName)
+
+
+
+
+head(StormSummary_df_combined)
+head(Rain.uv.combined)
+
+
+storm_sub <- StormSummary_df_combined %>%
+  select(rain_site, StartDate, EndDate, rain, AllFieldNames, AllProjects) %>%
+  mutate(wateryear = getWY(StartDate)) %>%
+  group_by(rain_site, AllFieldNames, AllProjects, wateryear) %>%
+  summarize(storm_total = sum(rain, na.rm = TRUE))
+
+
+rain_sub <- Rain.uv.combined %>%
+  mutate(wateryear = getWY(pdate)) %>%
+  group_by(rain_site, wateryear) %>%
+  summarize(rain_total = sum(rain, na.rm = TRUE))
+
+  
+combined_sub <- full_join(storm_sub, rain_sub) %>%
+  mutate(rain_diff = storm_total - rain_total)
+
+rain_v_storm_scatter <- ggplot(combined_sub, aes(x=storm_total, y = rain_total)) +
+  geom_abline() + 
+  geom_point(aes(color = as.factor(wateryear)), size = 3) +
+  facet_wrap(~rain_site, nrow = 5) +
+  labs(color = "Wateryear") + 
+  theme_bw()
+
+
+ggsave(file.path(path_to_results, "Figures", "Rain", "StormTotalsVersusRainTotals.png"), rain_v_storm_scatter, height = 10, width = 18)
+
+combined_long <- combined_sub %>%
+  pivot_longer(cols = contains("total"), names_to = "method", values_to = "rain_total" )
+
+rain_v_storm_ts <- ggplot(combined_long) +
+  # geom_hline(y_intercept = 0) + 
+  geom_col(aes(x = as.factor(wateryear), y = rain_total, fill = method, group = method), 
+           position = "dodge") +
+  facet_wrap(~rain_site, nrow = 5) +
+  labs(x = "Wateryear") + 
+  theme_bw() 
+
+print(rain_v_storm_ts)
+
+ggsave(file.path(path_to_results, "Figures", "Rain", "StormTotalsVersusRainTotals_bar.png"), rain_v_storm_ts, height = 10, width = 18)
+
+rain_v_storm_diff_ts <- ggplot(combined_long) +
+  geom_hline(yintercept = 0) +
+  geom_col(aes(x = as.factor(wateryear), y = rain_diff)) +
+  facet_wrap(~rain_site, nrow = 5) +
+  labs(x = "Wateryear") + 
+  theme_bw()
+
+print(rain_v_storm_diff_ts)
+
+ggsave(file.path(path_to_results, "Figures", "Rain", "StormTotalsVersusDiff_bar.png"), rain_v_storm_diff_ts, height = 10, width = 18)
+

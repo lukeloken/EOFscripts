@@ -95,7 +95,8 @@ for (file_nu in 1:length(approved_files)){
     
   }
   
-  data_i <- mutate(data_i, runoff_volume = as.numeric(runoff_volume))
+  data_i <- mutate(data_i, runoff_volume = as.numeric(runoff_volume)) %>%
+    select(-contains("New_"), -contains("X."), -contains("LoadRatio"))
   
   # data_i <- read.csv(path_to_sitefile, stringsAsFactors = F, header=T) %>%
   #   mutate(sample_start = as.POSIXct(sample_start, tz=state_tz, format='%m/%d/%Y %H:%M'),
@@ -413,7 +414,7 @@ for (var_i in 1:length(concvars)) {
     
   plot_list[[var_i]] <- ggplot(data_df_withconc_i, 
                                aes_string(x=used_vars[var_i], y=calc_vars[var_i])) + 
-    facet_wrap(~site, scales='free') +
+    facet_wrap(~site, scales='free', nrow = 3) +
     geom_point(aes(fill=site), alpha=.6, size=.5, shape=21, stroke=NA) +
     geom_text_repel(aes(label = label, colour=flag_yes),
                     alpha=.5, segment.size=.5, size=3, box.padding = 1) +
@@ -428,7 +429,7 @@ for (var_i in 1:length(concvars)) {
   # print(plot_list[[var_i]])
   
   ggsave(file.path(path_to_results, 'Figures', 'ConcentrationTesting', paste0(concvars[var_i], '.png')),
-         plot_list[[var_i]], height=15, width=15, units='in')
+         plot_list[[var_i]], height=9, width=21, units='in')
   
   
   plot_list2[[var_i]] <- ggplot(data_df_withconc_i, aes(y=diff, x=site, group=site, fill=site)) +

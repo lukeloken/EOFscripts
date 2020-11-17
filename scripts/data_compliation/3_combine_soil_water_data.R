@@ -5,17 +5,29 @@ library(pls)
 data_df3 <- readRDS(file=(file_in(file.path(path_to_data, "compiled_data", "storm_event_loads", "storm_event_conc_allsites_model.rds" ))))
 
 #Site order. Put New York and Wisconsin next to each other because they both receive manure
-site_order <- unique(data_df3$site)
-site_order <- c(site_order[grepl('OH', site_order)], site_order[grepl('OH', site_order)==FALSE])
+site_order <- as.character(unique(data_df3$Site))
+site_order <- c(site_order[grepl('IN', site_order)],
+                site_order[grepl('MI', site_order)],
+                site_order[grepl('OH', site_order)],
+                site_order[grepl('NY', site_order)],
+                site_order[grepl('WI', site_order)])
 
 data_WQformerge <- data_df3 %>%
   mutate(wateryear = as.numeric(as.character(wateryear))) %>%
-  filter(wateryear %in% c(2016:2017), frozen == 0) %>%
-  rename(Site = site) %>%
+  filter(wateryear %in% c(2016:2018), frozen == 0) %>%
+  # rename(Site = site) %>%
   mutate(Site = factor(Site, site_order),
-         state=factor(state, c('OH', 'IN', 'MI', 'NY', 'WI'))) %>%
+         state = factor(state, c('IN', 'MI', 'OH', 'NY', 'WI'))) %>%
   arrange(Site, storm_middate) 
 
+#Runoff index among sites/years
+rain_flow_out2 <- readRDS(file.path(path_to_data, "compiled_data", "rain", "annual_rain_flow_totals.rds")) %>%
+  filter(wateryear %in% c(2016:2018)) %>%
+  group_by(site, Area_acres) %>%
+  summarize(runoff_index_mean = mean(runoff_index, na.rm = TRUE),
+            runoff_index_combined = mean(runoff_volume_cf, na.rm = TRUE)/mean(rain_volume_cf, na.rm = TRUE)) %>%
+  mutate(diff = runoff_index_mean - runoff_index_combined) %>%
+  mutate(log10_Area = log10(Area_acres))
 
 #load farm data
 farm_management <- read.csv(file_in(file.path(path_to_data, "SiteCharacteristics", "EOF_WatershedAreas.csv")), header=T, stringsAsFactors = F) %>%
@@ -35,20 +47,63 @@ soil_0_15 <- readRDS(file=file_in(file.path(path_to_data, 'soil', 'cleaned_data'
   left_join(gis_combined, by = c("Site" = "site")) %>%
   select(-Type)
 
-#Variable groups
-# soil_vars <- names(soil_0_15)[c(4:28, 31:36, 38:39, 45:51)]
-good_soil_vars <- c("OM_spring", "total_P", "Bray_P", "POXC",
-                    "percent_N", "percent_C", "Basal_N20", "Basal_CO2",
-                    "SIR1_CO2", "SIR4_CO2", "SIR1_4", "WE_TC",
-                    "WE_TN", "WE_TOC", "WEP", "AP_nmol",
-                    "BG_nmol", "NAG_nmol", "Bulk_Den_spring", "P_Clay",
-                    "P_Sand", "P_Silt", "Residue_Cover", "Texture",
-                    "Soil_Sub_Order", "Kfs", "FinalFlux", "SA_1.2",
-                    "SA_2.8", "Penotrometer_0_6", "Penotrometer_6_18", "TT_class",
-                    "Manure", "Tile", "Till", "elevation_STD",
-                    "elevation_RANGE", "slope_MEAN", "slope_MAX")
+#Load new soil data
+soil_new <- read.csv(file.path(path_to_results, "Data", "Spring_Fall_medians_16_17_18.csv")) %>%
+  filter(Year %in% 2016:2017) %>%
+  group_by(Site) %>%
+  summarize(across(.cols = -Year, median, na.rm = TRUE)) %>%
+  select(-OM, -Fall_Bulk_Den) %>%
+  mutate(Site = gsub("-0", "-SW", Site)) # %>%
+  # left_join(farm_management, by = c("Site")) %>%
+  # left_join(gis_combined, by = c("Site" = "site")) %>%
+  # select(-Type)
 
-soil_vars <- intersect(good_soil_vars, names(soil_0_15))
+
+soil_tomerge <- soil_0_15 %>%
+  ungroup() %>%
+  select(Site, Residue_Cover:Soil_Sub_Order, wateryear:roughness_MEAN)
+    
+names(soil_new) <- gsub("_015", "", names(soil_new))
+
+soil_new <- soil_new %>%
+  full_join(soil_tomerge) %>%
+  left_join(select(rain_flow_out2, site, log10_Area), by = c("Site" = "site"))
+
+head(data.frame(soil_new))
+
+# Variable groups
+# good_soil_vars <- c("OM_spring", "total_P", "Bray_P", "POXC",
+#                     "percent_N", "percent_C", "Basal_N20", "Basal_CO2",
+#                     "SIR1_CO2", "SIR4_CO2", "SIR1_4", "WE_TC",
+#                     "WE_TN", "WE_TOC", "WEP", "AP_nmol",
+#                     "BG_nmol", "NAG_nmol", "Bulk_Den_spring", "P_Clay",
+#                     "P_Sand", "P_Silt", "Residue_Cover", "Texture",
+#                     "Soil_Sub_Order", "Kfs", "FinalFlux", "SA_1.2",
+#                     "SA_2.8", "Penotrometer_0_6", "Penotrometer_6_18", "TT_class",
+#                     "Manure", "Tile", "Till", "elevation_STD",
+#                     "elevation_RANGE", "slope_MEAN", "slope_MAX")
+# soil_vars <- intersect(good_soil_vars, names(soil_0_15))
+
+good_soil_vars_new <- c("OM", "POXC", "percent_TOC", "WE_TOC", "WE_TC",
+                        "total_P", "BrayP", "WEP", 
+                        "percent_N", "WE_TN", 
+                        "Bulk_Den", "PClay", "PSand", "PSilt", 
+                        "TT_class", "Soil_Sub_Order",
+                        "Residue_Cover", "log_Kfs", "FinalFlux",
+                        "SA_1_2", "SA_2_8",
+                        "Compaction_0_15", "Compaction_15_46", 
+                        "elevation_STD",  "slope_MEAN", "log10_Area",
+                        "SIR1_CO2", "SIR4_CO2", 
+                        "Basal_CO2", "NAG", "AcidP", "BetaG", 
+                        "Manure", "Tile", "Till")
+
+
+soil_vars <- intersect(good_soil_vars_new, names(soil_new))
+
+if (length(setdiff(good_soil_vars_new, names(soil_new))) > 0){
+  warning("not all good variables are in soil data.frame")
+}
+
 
 wq_vars <- c(loadvars, concvars, yieldvars, yieldperweqvars)
 
@@ -64,7 +119,7 @@ data_merge_median <- data_WQformerge %>%
   dplyr::select(wateryear, Site, all_of(wq_vars), peak_discharge, rain) %>%
   group_by(Site) %>%
   summarize_at(all_of(wq_vars), .funs=median, na.rm=T) %>%
-  left_join(soil_0_15, by = "Site") #%>%
+  left_join(soil_new, by = "Site") #%>%
 # drop_na(Manure) 
 
 data_merge_2016 <- data_WQformerge %>%
@@ -72,17 +127,18 @@ data_merge_2016 <- data_WQformerge %>%
                 peak_discharge, runoff_volume, rain) %>%
   group_by(Site) %>%
   summarize_at(all_of(wq_vars), .funs=c(median, mean), na.rm=T) %>%
-  left_join(soil_0_15, by = "Site") #%>%
+  left_join(soil_new, by = "Site") #%>%
 # drop_na(Manure) 
+
 
 #Calculate flow weighted mean concentration
 data_merge2 <- data_WQformerge %>%
   dplyr::select(wateryear, Site, all_of(wq_vars), peak_discharge, rain) %>%
   group_by(Site) %>%
-  summarise(across(concvars, 
+  summarise(across(all_of(concvars), 
                ~ weighted.mean(., runoff_volume, na.rm=T)), 
             .groups = "drop") %>%
-  left_join(soil_0_15, by = "Site") %>%
+  left_join(soil_new, by = "Site") %>%
   # drop_na(Manure) %>%
   # left_join(data_merge_median[c('Site', 'runoff_volume', 'runoff_volume_cubicfootperAcre', 
   #                               'runoff_cubicmeter_percubicmeterWEQ')]) %>%
@@ -106,11 +162,19 @@ ggplot(data_merge_runofftotal, aes(y=Runoff_Index, x=Site, fill=Type)) +
   geom_bar(stat='identity') +
   theme(axis.text.x=element_text(angle=90))
 
+data_merge_runofftotal_new <- data_merge_runofftotal %>%
+  full_join(rain_flow_out2, by = c("Site" = "site")) %>%
+  select(Site, Type, Runoff_Index = runoff_index_combined)
+
+ggplot(data_merge_runofftotal_new, aes(y=Runoff_Index, x=Site, fill = Type)) + 
+  geom_bar(stat='identity') +
+  theme(axis.text.x=element_text(angle=90))
+
 
 #Calculating yields by summing first (equivilent to mean then divide)
 data_merge_loadtotal <- data_WQformerge %>%
   mutate(weq_volume_m3 = weq*Area_acres*4046.86/39.3701) %>%
-  select(Site, Type, loadvars, weq_volume_m3) %>%
+  select(Site, Type, all_of(loadvars), weq_volume_m3) %>%
   group_by(Site, Type) %>%
   # na.omit() %>%
   summarize_all(mean, na.rm=T) 
@@ -123,7 +187,7 @@ names(data_merge_yieldtotal) <- gsub("_load_pounds", "_yield_mgL", names(data_me
 data_merge_yieldtotal$doc_yield_mgL[which(data_merge_yieldtotal$doc_yield_mgL==0)] <- NaN
 data_merge_yieldtotal$toc_yield_mgL[which(data_merge_yieldtotal$toc_yield_mgL==0)] <- NaN
 
-data_merge3 <- bind_cols(data_merge_runofftotal, data_merge_yieldtotal) %>%
+data_merge3 <- bind_cols(data_merge_runofftotal_new, data_merge_yieldtotal) %>%
   filter(Site %in% data_merge2$Site) %>%
   right_join(data_merge2, by = "Site") %>%
   group_by() %>%
@@ -178,14 +242,16 @@ names.cor <- row.names(predictors.cor)
 drop.predictors <- caret::findCorrelation(predictors.cor, cutoff = 0.95, verbose = FALSE, exact = TRUE)
 predictors.keep <- c(names.cor[-drop.predictors], 'Manure')
 
+# predictors.keep <- c(choice_soil, 'Manure')
+
 # predictors.keep.physics <- soil_vars[c(19:23, 26:31, 34:40)]
 
-predictors.keep.physics <- c("Bulk_Den_spring", "P_Clay", "P_Sand", 
-                             "P_Silt", "Residue_Cover", "Kfs",
-                             "FinalFlux", "SA_1.2", "SA_2.8",
-                             "Penotrometer_0_6", "Penotrometer_6_18", "Tile",
-                             "Till", "elevation_STD", "elevation_RANGE",
-                             "slope_MEAN", "slope_MAX")
+predictors.keep.physics <- intersect(good_soil_vars_new, 
+                                     c("Bulk_Den", "PClay", "PSand", 
+                                       "PSilt", "Residue_Cover", "log_Kfs",
+                                       "FinalFlux", "SA_1_2", "SA_2_8",
+                                       "Compaction_0_15", "Compaction_15_46", "Tile",
+                                       "Till", "elevation_STD",  "slope_MEAN", "log10_Area"))
 
 # Partial least squares (library(pls))
 # multi linear regression, glm, etc. 
@@ -246,9 +312,9 @@ for (wq_var in 1:length(choice_yields)) {
   
   var_list[[length(choice_soil)+1]] <- g_legend(plot_withLegend)
   
-  plot_list_yield[[wq_var]] <- grid.arrange(grobs=var_list, ncol=6, top=choice_yields[wq_var])
+  plot_list_yield[[wq_var]] <- grid.arrange(grobs=var_list, ncol=5, top=choice_yields[wq_var])
   
-  ggsave(file=file_out(file.path(path_to_results, 'Figures', 'Soil', 'SoilWQ_Scatter', paste(choice_yields[wq_var], ".png"))) , plot_list_yield[[wq_var]], height=8, width=8)
+  ggsave(file=file_out(file.path(path_to_results, 'Figures', 'Soil', 'SoilWQ_Scatter', paste(choice_yields[wq_var], ".png"))) , plot_list_yield[[wq_var]], height=10, width=7)
   
   
   # data.glm <- data_merge[c(choice_soil, choice_yields[wq_var])] %>%
@@ -257,6 +323,7 @@ for (wq_var in 1:length(choice_yields)) {
   
   data.glm <- data_merge[c(soil_vars[which(soil_vars %notin% c('Texture', 'Soil_Sub_Order', 'TT_class'))], choice_yields[wq_var])] %>%
     mutate(Manure = factor(Manure, levels=c('No Manure', "Manure"))) %>%
+    select(all_of(c(predictors.keep, choice_yields[wq_var]))) %>%
     select_if(~ !any(is.na(.))) %>%
     data.frame()
   
@@ -392,17 +459,18 @@ for (wq_var in 1:length(choice_conc)) {
   
   var_list[[length(choice_soil)+1]] <- g_legend(plot_withLegend)
   
-  plot_list_conc[[wq_var]] <- grid.arrange(grobs=var_list, ncol=6, top=choice_conc[wq_var])
+  plot_list_conc[[wq_var]] <- grid.arrange(grobs=var_list, ncol=5, top=choice_conc[wq_var])
   
-  ggsave(file=file_out(file.path(path_to_results, 'Figures', 'Soil', 'SoilWQ_Scatter', paste(choice_conc[wq_var], ".png"))) , plot_list_conc[[wq_var]], height=8, width=8)
+  ggsave(file=file_out(file.path(path_to_results, 'Figures', 'Soil', 'SoilWQ_Scatter', paste(choice_conc[wq_var], ".png"))) , plot_list_conc[[wq_var]], height=10, width=7)
   
   
   data.glm <- data_merge[c(soil_vars[which(soil_vars %notin% c('Texture', 'Soil_Sub_Order', 'TT_class'))], choice_conc[wq_var])] %>%
+    select(all_of(c(predictors.keep, choice_conc[wq_var]))) %>%
     select_if(~ !any(is.na(.))) %>%
     data.frame()
   
   if (choice_conc[wq_var] %in% choice_physics){
-    data.glm <- data_merge[c(predictors.keep.physics, choice_yields[wq_var])] %>%
+    data.glm <- data_merge[c(predictors.keep.physics, choice_conc[wq_var])] %>%
       # mutate(Manure = factor(Manure, levels=c('No Manure', "Manure"))) %>%
       select_if(~ !any(is.na(.))) %>%
       data.frame()
@@ -491,11 +559,11 @@ plot(glm_list_yield$tp_unfiltered_yield_poundperAcreperInchWEQ$BestModel$model$y
 
 png(file_out(file.path(path_to_results, "Figures", "Soil", "Spring2016_TextureTriangle_RI.png")), res=400, width=7, height=7, units='in')
 
-TT.plot(tri.data=data.frame(data_merge3[which(!is.na(data_merge3$P_Clay)),]), class.sys='USDA.TT', css.names=c('P_Clay', 'P_Silt', 'P_Sand'), col='black', main='', z.name='Runoff_Index')
+TT.plot(tri.data=data.frame(data_merge3[which(!is.na(data_merge3$P_Clay)),]), class.sys='USDA.TT', css.names=c('P_Clay', 'P_Silt', 'P_Sand'), col='black', main='', z.name='Runoff_Index', tri.sum.tst	= FALSE)
 
 dev.off()
 
-TT.plot(tri.data=data.frame(data_merge3[which(!is.na(data_merge3$P_Clay)),]), class.sys='USDA.TT', css.names=c('P_Clay', 'P_Silt', 'P_Sand'), col='black', main='', z.name='suspended_sediment_yield_mgL')
+TT.plot(tri.data=data.frame(data_merge3[which(!is.na(data_merge3$P_Clay)),]), class.sys='USDA.TT', css.names=c('P_Clay', 'P_Silt', 'P_Sand'), col='black', main='', z.name='suspended_sediment_yield_mgL', tri.sum.tst	= FALSE)
 
 
 #Plot water quality data for the time period included with soil links
@@ -503,12 +571,12 @@ yieldperweqvars
 concvars
 
 #plot runoff index
-runoff_index_box <- ggplot(data_WQformerge, aes(x=Site, y=runoff_cubicmeter_percubicmeterWEQ, fill=state)) +
+runoff_index_box <- ggplot(filter(data_WQformerge, type == "SW"), aes(x=Site, y=runoff_cubicmeter_percubicmeterWEQ, fill=state)) +
   geom_hline(yintercept = 1) +
   geom_jitter(width=.1, height=0, aes(col=state), alpha=.2, shape=16) + 
   geom_boxplot(size=.5, aes(alpha=type_binary), outlier.shape=NA) +
-  geom_point(data=data_merge3, aes(x=Site, y=Runoff_Index), pch=17, size=1.5, inherit.aes = F) + 
-  scale_alpha(range=c(.5,0), guide='none') + 
+  geom_point(data = filter(data_merge3, Type == "SW"), aes(x=Site, y=Runoff_Index), pch=17, size=1.5, inherit.aes = F) + 
+  scale_alpha(range=c(1,0), guide='none') + 
   scale_y_log10nice(name = "Runoff Index") +
   scale_color_brewer(palette='Set1') + 
   scale_fill_brewer(palette='Set1') + 
@@ -516,28 +584,25 @@ runoff_index_box <- ggplot(data_WQformerge, aes(x=Site, y=runoff_cubicmeter_perc
   theme_bw() +
   theme(legend.position='bottom', axis.title.x=element_blank(), panel.grid.minor=element_blank()) +
   theme(axis.text.x = element_text(angle=45, hjust=1), plot.title=element_text(size=10)) +
-  ggtitle("Wateryears 2016-2017, Non-frozen runoff events")
+  ggtitle("Wateryears 2016-2018, Non-frozen runoff events")
 
 print(runoff_index_box)
 
-png(file_out(file.path(path_to_results, "Figures", "RunoffIndexBaseline_Boxplots.png")), res=400, width=4, height=3, units='in')
-
-print(runoff_index_box)
-
-dev.off()
+ggsave(file.path(path_to_results, "Figures", "RunoffIndex2016_2018_Boxplots.png"), runoff_index_box,
+       width = 4, height = 3, units = "in")
 
 
 #Loop through yield vars and plot boxplot by site
 yieldvar=1
 yield_boxlist <- list()
 for (yieldvar in 1:length(choice_yields[-10])){
-  yield_boxlist[[yieldvar]] <- ggplot(data_WQformerge, aes_string(x='Site', y=choice_yields[yieldvar], fill='state')) +
+  yield_boxlist[[yieldvar]] <- ggplot(filter(data_WQformerge, type == "SW"), aes_string(x='Site', y=choice_yields[yieldvar], fill='state')) +
     geom_jitter(width=.1, height=0, aes(col=state), alpha=.2, shape=16) + 
     geom_boxplot(size=.5, aes(alpha=type_binary), outlier.shape=NA) +
-    geom_point(data=data_merge3, aes_string(x='Site', y=choice_yields[yieldvar]),
+    geom_point(data=filter(data_merge3, Type == "SW"), aes_string(x='Site', y=choice_yields[yieldvar]),
                pch=17, size=2, inherit.aes = F) + 
     # scale_alpha(range=c(.5,0)) + 
-    scale_alpha(range=c(.5,0), guide='none') +
+    scale_alpha(range=c(1,0), guide='none') +
     # scale_color_discrete(guide='none') + 
     scale_color_brewer(palette='Set1', guide='none') + 
     scale_fill_brewer(palette='Set1') + 
@@ -556,16 +621,16 @@ for (yieldvar in 1:length(choice_yields[-10])){
 concvar=1
 conc_boxlist <- list()
 for (concvar in 1:length(choice_conc)){
-  conc_boxlist[[concvar]] <-ggplot(data_WQformerge, aes_string(x='Site', y=choice_conc[concvar], fill='state')) +
+  conc_boxlist[[concvar]] <-ggplot(filter(data_WQformerge, type == "SW"), aes_string(x='Site', y=choice_conc[concvar], fill='state')) +
     geom_jitter(width=.1, height=0, aes(col=state), alpha=.2, shape=16) + 
     # scale_color_discrete(guide='none') + 
     scale_color_brewer(palette='Set1', guide='none') + 
     scale_fill_brewer(palette='Set1') + 
     geom_boxplot(size=.5, aes(alpha=type_binary), outlier.shape=NA) +
-    geom_point(data=data_merge3, aes_string(x='Site', y=choice_conc[concvar]), 
+    geom_point(data=filter(data_merge3, Type == "SW"), aes_string(x='Site', y=choice_conc[concvar]), 
                pch=17, size=2, inherit.aes = F) + 
     # scale_alpha(range=c(.5,0)) + 
-    scale_alpha(range=c(.5,0), guide='none') +
+    scale_alpha(range=c(1,0), guide='none') +
     # scale_y_log10nice(name = "suspended sediment (mg/L)", limits = c(.5, 20000)) +
     scale_y_log10nice(name = choice_conc[concvar]) +
     theme_bw() +
@@ -581,7 +646,7 @@ yield_withlegend <- yield_boxlist[[2]] +
   # theme(legend.position="bottom", legend.title=element_blank()) +
   theme(legend.position="bottom") +
   guides(fill = guide_legend(nrow = 1, title.position='top', title.hjust=0.5)) +
-  labs(fill="Wateryears 2016-2017, Non-frozen runoff events")
+  labs(fill="Wateryears 2016-2018, Non-frozen runoff events")
 
 
 yieldlegend<-g_legend(yield_withlegend)
@@ -590,7 +655,7 @@ rm(yield_withlegend)
 
 yield_box_grid <- grid.arrange(grobs=yield_boxlist, ncol=3, as.table = F)
 
-png(file_out(file.path(path_to_results, "Figures", "YieldBaseline_Boxplots.png")), res=400, width=12, height=9, units='in')
+png(file_out(file.path(path_to_results, "Figures", "Yield2016_2018_Boxplots.png")), res=400, width=12, height=9, units='in')
 
 grid.arrange(grobs=list(yield_box_grid,yieldlegend), ncol=1, heights=c(18,1))
 
@@ -602,7 +667,7 @@ dev.off()
 conc_withlegend <- conc_boxlist[[2]] + 
   theme(legend.position="bottom") +
   guides(fill = guide_legend(nrow = 1, title.position='top', title.hjust=0.5)) +
-  labs(fill="Wateryears 2016-2017, Non-frozen runoff events")
+  labs(fill="Wateryears 2016-2018, Non-frozen runoff events")
 
 conclegend<-g_legend(conc_withlegend)
 
@@ -612,7 +677,7 @@ conc_box_grid <- grid.arrange(grobs=conc_boxlist, ncol=3, as.table = F)
 
 
 
-png(file_out(file.path(path_to_results, "Figures", "ConcBaseline_Boxplots.png")), res=400, width=12, height=9, units='in')
+png(file_out(file.path(path_to_results, "Figures", "Conc2016_2018_Boxplots.png")), res=400, width=12, height=9, units='in')
 
 grid.arrange(grobs=list(conc_box_grid,conclegend), ncol=1, heights=c(18,1))
 
@@ -636,7 +701,7 @@ yield_boxlist_select[[3]] <- yield_boxlist_select[[3]] +
 
 yield_box_grid_select <- grid.arrange(grobs=yield_boxlist_select, ncol=1, as.table = F)
 
-png(file_out(file.path(path_to_results, "Figures", "yieldBaseline_Boxplots_SelectVars.png")), res=400, width=4, height=8, units='in')
+png(file_out(file.path(path_to_results, "Figures", "yield2016_2018_Boxplots_SelectVars.png")), res=400, width=4, height=8, units='in')
 
 grid.arrange(grobs=list(yield_box_grid_select,yieldlegend), ncol=1, heights=c(18,1), top = "Yield")
 
@@ -660,7 +725,7 @@ conc_boxlist_select[[3]] <- conc_boxlist_select[[3]] +
 
 conc_box_grid_select <- grid.arrange(grobs=conc_boxlist_select, ncol=1, as.table = F)
 
-png(file_out(file.path(path_to_results, "Figures", "ConcBaseline_Boxplots_SelectVars.png")), res=400, width=4, height=8, units='in')
+png(file_out(file.path(path_to_results, "Figures", "Conc2016_2018_Boxplots_SelectVars.png")), res=400, width=4, height=8, units='in')
 
 grid.arrange(grobs=list(conc_box_grid_select,conclegend), ncol=1, heights=c(18,1), top = "Concentration")
 

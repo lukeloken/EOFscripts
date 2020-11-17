@@ -248,12 +248,34 @@ rain_flow_out <- full_join(rain_total_summary, flow_total_summary)  %>%
 
 site_order <- unique(rain_flow_out$site)
 
+
+#Site order. Put New York and Wisconsin next to each other because they both receive manure
+site_order <- as.character(unique(rain_flow_out$site))
+site_order <- c(site_order[grepl('IN', site_order)],
+                site_order[grepl('MI', site_order)],
+                site_order[grepl('OH', site_order)],
+                site_order[grepl('NY', site_order)],
+                site_order[grepl('WI', site_order)])
+
+# rain_flow_out <- rain_flow_out %>%
+#   mutate(site = factor(site, unique(site_order)))
+
+
 rain_flow_out <- rain_flow_out %>%
-  mutate(site = factor(site, unique(site_order)))
-  
+  mutate(site = factor(site, site_order),
+         state = factor(state, c('IN', 'MI', 'OH', 'NY', 'WI'))) %>%
+  arrange(site, wateryear)   
 
+rain_flow_out2 <- rain_flow_out %>%
+  rename(rain_in = rain,
+         rain_volume_cf = rain_volume,
+         runoff_volume_cf = runoff_volume)
 
-runoff_index <- ggplot(rain_flow_out, aes(x = site, y = runoff_index, 
+write.csv(rain_flow_out2, file.path(path_to_data, "compiled_data", "rain", "annual_rain_flow_totals.csv"), row.names = FALSE)
+
+saveRDS(rain_flow_out2, file.path(path_to_data, "compiled_data", "rain", "annual_rain_flow_totals.rds"))
+
+runoff_index_SW <- ggplot(filter(rain_flow_out, Type == "SW"), aes(x = site, y = runoff_index, 
                           fill = state, alpha = Type)) +
   geom_jitter(width=0, height=0, aes(col=state), alpha=1, shape=21) + 
   geom_boxplot(outlier.shape = NA) +
@@ -271,9 +293,79 @@ runoff_index <- ggplot(rain_flow_out, aes(x = site, y = runoff_index,
   scale_color_brewer(palette='Set1', guide='none') + 
   scale_fill_brewer(palette='Set1', na.translate = F) 
 
-runoff_index
+runoff_index_SW
 
-ggsave(filename = file.path(path_to_results, 'Figures', 'Rain', 'RunoffIndexSum.png'), runoff_index, height = 4, width = 6)
+ggsave(filename = file.path(path_to_results, 'Figures', 'Rain', 'RunoffIndexSum_SW.png'), runoff_index_SW, height = 4, width = 6)
+
+
+
+rain_totals <- ggplot(rain_flow_out, aes(x = site, y = rain, 
+                                          fill = state, alpha = Type)) +
+  geom_jitter(width=0, height=0, aes(col=state), alpha=1, shape=21) + 
+  geom_boxplot(outlier.shape = NA) +
+  theme_bw() + 
+  # scale_fill_discrete(na.translate = F) +
+  # scale_color_discrete(guide = FALSE, na.translate = F) +
+  scale_alpha_manual(values = c(.5,0.1), guide = FALSE) + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(y = 'Rain (in/year)') + 
+  # scale_y_log10() +  
+  geom_text(aes(label = wateryear), colour = 'darkgrey',
+            alpha = 1, size = 3,
+            show.legend = FALSE) +
+  ggtitle(expression(paste(Sigma, " annual rain"))) +
+  scale_color_brewer(palette='Set1', guide='none') + 
+  scale_fill_brewer(palette='Set1', na.translate = F) 
+
+rain_totals
+
+rain_totals_SW <- ggplot(filter(rain_flow_out, Type == "SW"), aes(x = site, y = rain, 
+                                         fill = state, alpha = Type)) +
+  geom_jitter(width=0, height=0, aes(col=state), alpha=1, shape=21) + 
+  geom_boxplot(outlier.shape = NA) +
+  theme_bw() + 
+  # scale_fill_discrete(na.translate = F) +
+  # scale_color_discrete(guide = FALSE, na.translate = F) +
+  scale_alpha_manual(values = c(.5,0.1), guide = FALSE) + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(y = 'Rain (in/year)') + 
+  # scale_y_log10() +  
+  geom_text(aes(label = wateryear), colour = 'black',
+            alpha = 1, size = 2,
+            show.legend = FALSE,
+            nudge_x = .31) +
+  ggtitle(expression(paste(Sigma, " annual rain by wateryear"))) +
+  scale_color_brewer(palette='Set1', guide='none') + 
+  scale_fill_brewer(palette='Set1', na.translate = F) 
+
+rain_totals_SW
+
+ggsave(filename = file.path(path_to_results, 'Figures', 'Rain', 'RainTotals.png'), rain_totals_SW, height = 4, width = 6)
+
+flow_totals_SW <- ggplot(filter(rain_flow_out, Type == "SW"), aes(x = site, y = runoff_volume, 
+                                                                  fill = state, alpha = Type)) +
+  geom_jitter(width=0, height=0, aes(col=state), alpha=1, shape=21) + 
+  geom_boxplot(outlier.shape = NA) +
+  theme_bw() + 
+  # scale_fill_discrete(na.translate = F) +
+  # scale_color_discrete(guide = FALSE, na.translate = F) +
+  scale_alpha_manual(values = c(.5,0.1), guide = FALSE) + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(y = 'Runoff (cf/year)') + 
+  scale_y_log10nice(name = "Runoff (cf/year)") +
+  geom_text(aes(label = wateryear), colour = 'black',
+            alpha = 1, size = 2,
+            show.legend = FALSE,
+            nudge_x = .31) +
+  ggtitle(expression(paste(Sigma, " annual runoff by wateryear"))) +
+  scale_color_brewer(palette='Set1', guide='none') + 
+  scale_fill_brewer(palette='Set1', na.translate = F) 
+
+flow_totals_SW
+
+ggsave(filename = file.path(path_to_results, 'Figures', 'RunoffTotals.png'), flow_totals_SW, height = 4, width = 6)
+
+
 
 
 ggplot(rain_new_df,aes(x=rain, fill=DidItFlow, col=DidItFlow)) + 

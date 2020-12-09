@@ -51,9 +51,9 @@ data_df <- data_list %>%
   select(-file_nu) %>%
   mutate(site = as.character(site)) %>%
   mutate(site = gsub("'", "", site)) %>%
-  select(site, FieldName, everything()) %>%
-  left_join(select(site_table_i, Area, USGSSiteNumber), 
-            by = c("site" = "USGSSiteNumber"))
+  select(site, Field_Name = FieldName, everything()) %>%
+  left_join(select(site_table_i, Area, USGS_Station_Number), 
+            by = c("site" = "USGS_Station_Number"))
 
 summary(data_df$runoff_volume)
 
@@ -118,115 +118,121 @@ filter(data_df, runoff_volume<0.05)
     
     #Loop through each variable and combine concentration and load data
     #Calculate yields using area and load
-    var_i = 7
+    var_i = 1
     data_df_new <- data_df
-      for (var_i in 1:length(names_list)){
-        
+    for (var_i in 1:length(names_list)){
       
       if (length(names_list[[var_i]])>0){
-      
-      data_flag_i_unite <- data_flag_i <- '.dplyr'
-      
-      #find flags
-      flag_names_i <- intersect(flag_names, names_list[[var_i]])
-      
-      if (length(flag_names_i)>0) {
         
-        data_flag_i <- data_df %>%
-          select(all_of(flag_names_i)) %>%
+        data_flag_i_unite <- data_flag_i <- '.dplyr'
+        
+        #get list of names and good names
+        conc_names_i <- intersect(conc_names, names_list[[var_i]])
+        load_names_i <- intersect(load_names, names_list[[var_i]])
+        flag_names_i <- intersect(flag_names, names_list[[var_i]])
+        yield_names_i <- intersect(yield_names, names_list[[var_i]])
+        
+        good_conc_name <- concvars[var_i]
+        good_load_name <- loadvars[var_i]
+        good_yield_name <- yieldvars[var_i]
+        good_flag_name <- flagvars[var_i]
+        
+        #find flags
+        if (length(flag_names_i) > 0) {
+          
+          data_flag_i <- data_df %>%
+            select(all_of(flag_names_i)) %>%
+            mutate_all(as.character)
+          
+          data_flag_i_unite <- unite(data_flag_i, col=merge_var, 1:(length(flag_names_i)), na.rm=T, sep=' ') %>%
+            mutate(merge_var = gsub(",", "", merge_var))
+          names(data_flag_i_unite)[1] <- as.character(good_flag_name)
+          
+        } else { 
+          data_flag_i_unite <- data.frame(rep("", nrow(data_df)))
+          names(data_flag_i_unite)[1] <- as.character(good_flag_name)
+        }
+        
+        
+        # Merge concentrations and compute new loads
+        data_conc_i <- data_df %>%
+          select(all_of(conc_names_i)) %>%
           mutate_all(as.character)
         
-        data_flag_i_unite <- unite(data_flag_i, col=merge_var, 1:(length(flag_names_i)), na.rm=T, sep='| ')
+        data_conc_i_unite <- unite(data_conc_i, col = merge_var, 1:(length(conc_names_i)), na.rm=T)
         
-        names(data_flag_i_unite)[1] <- as.character(flagvars[var_i])
-      } else { 
-        data_flag_i_unite <- data.frame(rep("", nrow(data_df)))
-        names(data_flag_i_unite)[1] <- as.character(flagvars[var_i])
+        names(data_conc_i_unite)[1] <- as.character(good_conc_name)
+        
+        data_conc_i_unite <- data_conc_i_unite %>%
+          bind_cols(data_flag_i_unite) %>%
+          bind_cols(select(data_df, runoff_volume, Area))
+        
+        data_conc_i_unite$used_conc_numeric <- as.numeric(gsub("<", "", data_conc_i_unite[,1]))
+        
+        #For values with less than symbol, assign a value of half of MDL
+        Below_mdl_conc <- grepl("<", data_conc_i_unite[,good_flag_name])
+        data_conc_i_unite$used_conc_numeric[Below_mdl_conc] <- data_conc_i_unite$used_conc_numeric[Below_mdl_conc]/2
+        
+        data_conc_i_unite[,1] <- as.numeric(gsub("<", "", data_conc_i_unite[,1]))
+        
+        #For organic n and total n replace values smaller than 0.50 with "<0.05"
+        if (good_conc_name %in% c("total_nitrogen_conc_mgL", "organic_nitrogen_conc_mgL")) {
+          
+          data_conc_i_unite[,2][which(data_conc_i_unite[,1] < 0.05)] <- 
+            paste0("< ", data_conc_i_unite[,2][which(data_conc_i_unite[,1] < 0.05)])
+          data_conc_i_unite$used_conc_numeric[which(data_conc_i_unite[,1] < 0.05)] <- 0.025
+          data_conc_i_unite[,1][which(data_conc_i_unite[,1] < 0.05)] <- 0.05
+          
+        }
+        
+        data_conc_i_unite <- data_conc_i_unite %>%
+          mutate(new_load = used_conc_numeric * runoff_volume / 453592 * 28.3168,
+                 new_yield = new_load / Area) %>%
+          select(-runoff_volume, -Area)
+        
+        names(data_conc_i_unite)[which(names(data_conc_i_unite)=='used_conc_numeric')] <- 
+          paste0(good_conc_name, '_used')
+        
+        names(data_conc_i_unite)[which(names(data_conc_i_unite)=='new_load')] <- 
+          paste0(good_load_name, '_new')
+        
+        names(data_conc_i_unite)[which(names(data_conc_i_unite)=='new_yield')] <- 
+          paste0(good_yield_name, '_new')
+        
+        #merge original load
+        data_load_i <- data_df %>%
+          select(all_of(load_names_i)) %>%
+          mutate_all(as.character) 
+        
+        data_load_i_unite <- unite(data_load_i, col=merge_var, 1:(length(load_names_i)), na.rm=T)
+        
+        
+        data_load_i_unite <- mutate_all(data_load_i_unite, as.numeric) %>%
+          bind_cols(select(data_df, runoff_volume)) %>%
+          mutate(used_conc = merge_var / runoff_volume * 453592 / 28.3168) %>%
+          select(-runoff_volume)
+        
+        names(data_load_i_unite)[1] <- as.character(paste0(good_load_name))
+        names(data_load_i_unite)[2] <- as.character(paste0(good_conc_name, "_calculated"))
+        
+        #merge original yield
+        data_yield_i <- data_df %>%
+          select(all_of(yield_names_i)) %>%
+          mutate_all(as.character) 
+        
+        data_yield_i_unite <- unite(data_yield_i, col=merge_var, 1:(length(yield_names_i)), na.rm=T)
+        
+        names(data_yield_i_unite)[1] <- as.character(paste0(good_yield_name))
+        
+        data_yield_i_unite <- mutate_all(data_yield_i_unite, as.numeric) 
+        
+        data_df_new <- data_df_new %>%
+          select(-all_of(c(conc_names_i, load_names_i, flag_names_i, yield_names_i))) %>%
+          bind_cols(data_conc_i_unite) %>%
+          bind_cols(data_load_i_unite) %>%
+          bind_cols(data_yield_i_unite) 
+        
       }
-      
-      
-      
-      #Identify concentration names to merge/compare
-      conc_names_i <- intersect(conc_names, names_list[[var_i]])
-      good_conc_name <- concvars[var_i]
-      
-      data_conc_i <- data_df %>%
-        select(all_of(conc_names_i)) %>%
-        mutate_all(as.character)
-      
-      data_conc_i_unite <- unite(data_conc_i, col=merge_var, 1:(length(conc_names_i)), na.rm=T)
-      
-      names(data_conc_i_unite)[1] <- as.character(good_conc_name)
-      
-      data_conc_i_unite <- data_conc_i_unite %>%
-        bind_cols(data.frame('site_conc' = data_df[,c('site')])) %>%
-        bind_cols(data_flag_i_unite)
-      
-      data_conc_i_unite$used_conc_numeric <- as.numeric(gsub("<", "", data_conc_i_unite[,1]))
-      data_conc_i_unite$used_conc_numeric[data_conc_i_unite$used_conc_numeric == 0] <- NA
-      
-      
-      #For values with less than symbol, assign a value of half of MDL
-      Below_mdl_conc <- grepl("<", data_conc_i_unite[,3])
-      data_conc_i_unite$used_conc_numeric[Below_mdl_conc] <- data_conc_i_unite$used_conc_numeric[Below_mdl_conc]/2
-      
-      
-      names(data_conc_i_unite)[which(names(data_conc_i_unite)=='used_conc_numeric')] <- 
-        paste0(good_conc_name, '_used')
-      
-      data_conc_i_unite[,1] <- as.numeric(gsub("<", "", data_conc_i_unite[,1]))
-      
-
-      #merge load
-      load_names_i <- intersect(load_names, names_list[[var_i]])
-      good_load_name <- loadvars[var_i]
-      good_yield_name <- yieldvars[var_i]
-      
-      data_load_i <- data_df %>%
-        select(all_of(load_names_i), Area) %>%
-        mutate_all(as.character) 
-      
-      data_load_i_unite <- unite(data_load_i, col=merge_var, 1:(length(load_names_i)), na.rm=T)
-      
-      names(data_load_i_unite)[1] <- as.character(good_load_name)
-      
-      data_load_i_unite <- mutate_all(data_load_i_unite, as.numeric) %>%
-        mutate(yield = !!sym(good_load_name)/as.numeric(Area)) %>%
-        mutate(site_load = data_df$site) %>%
-        select(-Area)
-      
-      names(data_load_i_unite)[2] <- paste0(as.character(good_yield_name), "_new")
-      
-      
-      
-      # data_load_i <- data_df %>%
-      #   select(all_of(load_names_i)) %>%
-      #   mutate_all(as.character) 
-      # 
-      # data_load_i_unite <- unite(data_load_i, col=merge_var, 1:(length(load_names_i)), na.rm=T)
-      # 
-      # names(data_load_i_unite)[1] <- as.character(good_load_name)
-      # 
-      # data_load_i_unite <- mutate_all(data_load_i_unite, as.numeric) %>%
-      #   mutate(site_load = data_df$site) 
-      # 
-      # 
-      # data_df_new <- data_df_new %>%
-      #   select(-all_of(c(conc_names_i, load_names_i, flag_names_i))) %>%
-      #   bind_cols(data_load_i_unite[,1:2]) %>%
-      #   bind_cols(data_conc_i_unite[,1:4]) %>%
-      #   select(-site_load, -site_conc) 
-      # 
-      
-      data_df_new <- data_df_new %>%
-        select(-all_of(c(conc_names_i, load_names_i, flag_names_i))) %>%
-        bind_cols(data_load_i_unite[,1:3]) %>%
-        bind_cols(data_conc_i_unite[,1:4]) %>%
-        select(-site_load, -site_conc) 
-      
-      
-      
-    }
     }
     
     
@@ -295,57 +301,42 @@ filter(data_df, runoff_volume<0.05)
     # Plot calculated versus reported concentration
     # #############################################
     
-    
-    #Calculate concentration using loads and runoff volume
-    included_vars <- which(loadvars %in%names(data_df_new))
-    
-    
-    conc_df <- data.frame(sapply(data_df_new[,loadvars[included_vars]], function (x) x/data_df_new$runoff_volume*453592/28.3168))
-    conc_df <- signif(conc_df, 4)
-    colnames(conc_df) <- paste0(concvars[included_vars], '_calculated')
-    
-    data_df_withconc <- bind_cols(data_df_new, conc_df) %>%
-      filter(runoff_volume>0, is.finite(runoff_volume))
-    
-    data_df_withconc <- bind_cols(data_df_new, conc_df)
-    
     calc_vars <- paste0(concvars, "_calculated")
     used_vars <- paste0(concvars, "_used")
     yield_new <- paste0(yieldvars, "_new")   
-    
-    # 
-    # calc_vars <- names(data_df_withconc)[grepl('_calculated', names(data_df_withconc))]
-    # used_vars <- names(data_df_withconc)[grepl('_used', names(data_df_withconc))]
+    load_new <- paste0(loadvars, "_new")   
     
     
     # Compare calculated (from loads) with united column
     var_i <- 1
-    plot_list <- plot_list2 <- plot_list3 <- list()
+    plot_list <- plot_list2 <-  plot_list3 <- plot_list4 <- list()
     
     for (var_i in 1:length(concvars)) {
       
-      if(calc_vars[var_i] %in% names(data_df_withconc) & 
-         used_vars[var_i] %in% names(data_df_withconc)) {
-      
+      if(calc_vars[var_i] %in% names(data_df_new) & 
+         used_vars[var_i] %in% names(data_df_new)) {
+        
         sig_digits <- ifelse (var_i == 1, 1, 
                               ifelse(var_i %in% c(2,10,11), 0.1,
                                      ifelse(var_i %in% c(3,4,5,8,9), 0.01,
                                             ifelse(var_i %in% c(6,7), 0.001, NA)))) *5
         
-        yield_org <- intersect(names(data_df_withconc), 
-                               names_list[[var_i]][grepl("yield", names_list[[var_i]])])
         
-        data_df_withconc_i <- data_df_withconc %>% 
-          select(site, FieldName, unique_storm_number, all_of(c(used_vars[var_i], 
-                                                     calc_vars[var_i], 
-                                                     yield_new[var_i],
-                                                     yield_org,
-                                                     flagvars[var_i]))) %>%
-          mutate(ratio = data_df_withconc[,used_vars[var_i]] /
-                   data_df_withconc[,calc_vars[var_i]],
-                 ratio_yield = data_df_withconc[,yield_new[var_i]] /
-                   data_df_withconc[,yield_org],
-                 diff = abs(data_df_withconc[,used_vars[var_i]] - data_df_withconc[,calc_vars[var_i]])) %>%
+        data_df_new_i <- data_df_new %>% 
+          select(site, Field_Name, unique_storm_number, all_of(c(used_vars[var_i], 
+                                                                 calc_vars[var_i], 
+                                                                 yield_new[var_i],
+                                                                 yieldvars[var_i],
+                                                                 load_new[var_i], 
+                                                                 loadvars[var_i],
+                                                                 flagvars[var_i]))) %>%
+          mutate(ratio = data_df_new[,used_vars[var_i]] /
+                   data_df_new[,calc_vars[var_i]],
+                 ratio_yield = data_df_new[,yield_new[var_i]] /
+                   data_df_new[,yieldvars[var_i]],
+                 ratio_load = data_df_new[,load_new[var_i]] /
+                   data_df_new[,loadvars[var_i]],
+                 diff = abs(data_df_new[,used_vars[var_i]] - data_df_new[,calc_vars[var_i]])) %>%
           mutate(group = case_when(ratio < 0.9 ~ 'low',
                                    ratio > 1.1 ~ 'high',
                                    ratio >= 0.9 & ratio <= 1.1 ~ 'good', 
@@ -360,111 +351,141 @@ filter(data_df, runoff_volume<0.05)
                  group3 = case_when(ratio_yield < 0.95 ~ 'low',
                                     ratio_yield > 1.05 ~ 'high',
                                     ratio_yield >= 0.95 & ratio <= 1.05 ~ 'good', 
-                                    is.na(ratio) ~ 'NA'),
+                                    is.na(ratio_yield) ~ 'NA'),
                  label3 = case_when(group3 == 'good' ~ "",
-                                    group3 %in% c('low', 'high', 'NA') ~ unique_storm_number)
+                                    group3 %in% c('low', 'high', 'NA') ~ unique_storm_number),
+                 group4 = case_when(ratio_load < 0.95 ~ 'low',
+                                    ratio_load > 1.05 ~ 'high',
+                                    ratio_load >= 0.95 & ratio <= 1.05 ~ 'good', 
+                                    is.na(ratio_load) ~ 'NA'),
+                 label4 = case_when(group4 == 'good' ~ "",
+                                    group4 %in% c('low', 'high', 'NA') ~ unique_storm_number)
           ) %>%
-          mutate(flag_yes = ifelse(grepl('<', data_df_withconc[,flagvars[var_i]]), TRUE, FALSE)) #%>%
-        # filter(site != 'MI-TL2')
+          mutate(flag_yes = ifelse(grepl('<', data_df_new[,flagvars[var_i]]), TRUE, FALSE)) 
         
-        mms.cor <- ddply(.data=data_df_withconc_i, 
-                         .(FieldName), 
+        mms.cor <- ddply(.data=data_df_new_i, 
+                         .(Field_Name), 
                          summarize, 
                          n=paste(" n =", length(which(is.finite(diff)))))
         
         
-      
-      plot_list[[var_i]] <- ggplot(data_df_withconc_i, 
-                                   aes_string(x=used_vars[var_i], y=calc_vars[var_i])) + 
-        facet_wrap(~FieldName, nrow = 1) +
-        # facet_wrap(~site, scales='free', nrow = 4) +
-        geom_point(aes(fill=FieldName), alpha=.6, size=.5, shape=21, stroke=NA) +
-        geom_text_repel(aes(label = label, colour=flag_yes),
-                        alpha=.5, segment.size=.5, size=3, box.padding = 1) +
-        scale_color_manual(values=c('black', 'red')) + 
-        geom_abline() +
-        theme_bw() +
-        scale_x_log10(name='reported concentrations (if flag contains <, halfed value in conc column)') +
-        scale_y_log10(name='calculated from load') +
-        ggtitle(paste(Sys.Date(), concvars[var_i])) +
-        theme(legend.position = 'none') +
-        geom_text(data=mms.cor, aes(x=0, y=Inf, label=n), 
-                  colour="black", inherit.aes=FALSE, parse=FALSE, hjust = 0, vjust = 1)
-      
-      # print(plot_list[[var_i]])
-      
-      ggsave(file.path(path_to_results, 'Figures', 'ConcentrationTesting', 'MRBI', paste0("MRBI_", concvars[var_i], '.png')),
-             plot_list[[var_i]], height=4, width=10, units='in')
-      
-      
-      plot_list2[[var_i]] <- ggplot(data_df_withconc_i, aes(y=diff, x=FieldName, group=FieldName, fill=FieldName)) +
-        geom_hline(yintercept = sig_digits) + 
-        geom_jitter(aes(color=FieldName), width= .1, height=0, alpha=.4) + 
-        # geom_boxplot(aes(group=site), alpha=.6, outlier.shape = NA) +
-        scale_y_sqrt(limits=c(0,NA), name='abs difference between calculated and reported') +
-        # scale_y_continuous(limits=c(0,5)) +
-        geom_text_repel(aes(label = label2, color = FieldName),
-                        alpha=.5, segment.size=.5, size=3) +
-        theme_bw() +
-        theme(legend.position='none', axis.text.x = element_text(angle=90),
-              axis.title.x = element_blank()) +
-        ggtitle(concvars[var_i])
-      
-      # print(plot_list2[[var_i]])
-      
-      ggsave(file.path(path_to_results, 'Figures', 'ConcentrationTesting', 'MRBI', paste0('MRBI_', concvars[var_i], '_Diff.png')),
-             plot_list2[[var_i]], height=4, width=5, units='in')
-      
-      #yields
-      plot_list3[[var_i]] <- ggplot(data_df_withconc_i, 
-                                    aes_string(y=yield_new[var_i], x=yield_org)) + 
-        facet_wrap(~FieldName, nrow = 1) +
-        # facet_wrap(~site, scales='free', nrow = 4) +
-        geom_point(aes(fill=FieldName), alpha=.6, size=.5, shape=21, stroke=NA) +
-        geom_text_repel(aes(label = label3),
-                        alpha=.5, segment.size=.5, size=3, box.padding = 1) +
-        # scale_color_manual(values=c('black', 'red')) + 
-        geom_abline() +
-        theme_bw() +
-        scale_x_log10nice(name='Yield original') +
-        scale_y_log10nice(name='Yield (calculated from load and area)') +
-        ggtitle(yieldvars[var_i]) +
-        theme(legend.position = 'none') +
-        geom_text(data=mms.cor, aes(x=0, y=Inf, label=n), 
-                  colour="black", inherit.aes=FALSE, parse=FALSE, hjust = 0, vjust = 1)
-      
-      # print(plot_list3[[var_i]])
-      
-      ggsave(file.path(path_to_results, 'Figures', 'YieldTesting', 'MRBI', paste0('Yields_MRBI_', concvars[var_i], '.png')),
-             plot_list3[[var_i]], height=4, width=10, units='in')
-      
+        plot_list[[var_i]] <- ggplot(data_df_new_i, 
+                                     aes_string(x=used_vars[var_i], y=calc_vars[var_i])) + 
+          facet_wrap(~Field_Name, nrow = 1) +
+          # facet_wrap(~site, scales='free', nrow = 4) +
+          geom_point(aes(fill=Field_Name), alpha=.6, size=.5, shape=21, stroke=NA) +
+          geom_text_repel(aes(label = label, colour=flag_yes),
+                          alpha=.5, segment.size=.5, size=3, box.padding = 1) +
+          scale_color_manual(values=c('black', 'red')) + 
+          geom_abline() +
+          theme_bw() +
+          scale_x_log10(name='reported concentrations (if flag contains <, halfed value in conc column)') +
+          scale_y_log10(name='calculated from load') +
+          ggtitle(paste(Sys.Date(), concvars[var_i])) +
+          theme(legend.position = 'none') +
+          geom_text(data=mms.cor, aes(x=0, y=Inf, label=n), 
+                    colour="black", inherit.aes=FALSE, parse=FALSE, hjust = 0, vjust = 1)
+        
+        # print(plot_list[[var_i]])
+        
+        ggsave(file.path(path_to_results, 'Figures', 'ConcentrationTesting', 'MRBI', paste0("MRBI_", concvars[var_i], '.png')),
+               plot_list[[var_i]], height = 4, width = 10, units='in')
+        
+        
+        plot_list2[[var_i]] <- ggplot(data_df_new_i, 
+                                      aes(y=diff, x=Field_Name, 
+                                          group=Field_Name, fill=Field_Name)) +
+          geom_hline(yintercept = sig_digits) + 
+          geom_jitter(aes(color=Field_Name), width= .1, height=0, alpha=.4) + 
+          # geom_boxplot(aes(group=site), alpha=.6, outlier.shape = NA) +
+          scale_y_sqrt(limits=c(0,NA), name='abs difference between calculated and reported') +
+          # scale_y_continuous(limits=c(0,5)) +
+          geom_text_repel(aes(label = label2, color = Field_Name),
+                          alpha=.5, segment.size=.5, size=3) +
+          theme_bw() +
+          theme(legend.position='none', axis.text.x = element_text(angle=90),
+                axis.title.x = element_blank()) +
+          ggtitle(concvars[var_i])
+        
+        # print(plot_list2[[var_i]])
+        
+        ggsave(file.path(path_to_results, 'Figures', 'ConcentrationTesting', 'MRBI', paste0("MRBI_", concvars[var_i], '_Diff.png')),
+               plot_list2[[var_i]], height=4, width=6, units='in')
+        
+        #yields
+        plot_list3[[var_i]] <- ggplot(data_df_new_i, 
+                                      aes_string(y=yield_new[var_i], x=yieldvars[var_i])) + 
+          facet_wrap(~Field_Name, nrow = 1) +
+          # facet_wrap(~site, scales='free', nrow = 4) +
+          geom_point(aes(fill=Field_Name), alpha=.6, size=.5, shape=21, stroke=NA) +
+          geom_text_repel(aes(label = label3),
+                          alpha=.5, segment.size=.5, size=3, box.padding = 1) +
+          # scale_color_manual(values=c('black', 'red')) + 
+          geom_abline() +
+          theme_bw() +
+          scale_x_log10(name='Yield original') +
+          scale_y_log10(name='Yield (calculated from conc, runoff, and area)') +
+          ggtitle(yieldvars[var_i]) +
+          theme(legend.position = 'none') +
+          geom_text(data=mms.cor, aes(x=0, y=Inf, label=n), 
+                    colour="black", inherit.aes=FALSE, parse=FALSE, hjust = 0, vjust = 1)
+        
+        # print(plot_list3[[var_i]])
+        
+        ggsave(file.path(path_to_results, 'Figures', 'YieldTesting', 'MRBI', paste0('MRBI_', yieldvars[var_i], '.png')),
+               plot_list3[[var_i]], height = 4, width = 10, units='in')
+        
+        
+        plot_list4[[var_i]] <- ggplot(data_df_new_i, 
+                                      aes_string(x=loadvars[var_i], y=load_new[var_i])) + 
+          facet_wrap(~Field_Name, nrow = 1) +
+          # facet_wrap(~site, scales='free', nrow = 4) +
+          geom_point(aes(fill=Field_Name), alpha=.6, size=.5, shape=21, stroke=NA) +
+          geom_text_repel(aes(label = label4, colour=flag_yes),
+                          alpha=.5, segment.size=.5, size=3, box.padding = 1) +
+          scale_color_manual(values=c('black', 'red')) + 
+          geom_abline() +
+          theme_bw() +
+          scale_x_log10(name='reported load') +
+          scale_y_log10(name='calculated from concentration') +
+          ggtitle(paste(Sys.Date(), loadvars[var_i])) +
+          theme(legend.position = 'none') +
+          geom_text(data=mms.cor, aes(x=0, y=Inf, label=n),
+                    colour="black", inherit.aes=FALSE, parse=FALSE, hjust = 0, vjust = 1)
+        
+        # print(plot_list4[[var_i]])
+        
+        ggsave(file.path(path_to_results, 'Figures', 'ConcentrationTesting', 'MRBI', paste0("MRBI_", loadvars[var_i], '.png')),
+               plot_list4[[var_i]], height = 4 , width = 10, units='in')
+        
       }
     }
- 
     
     
-    data_df_approved <- data_df_withconc %>%
-      rename(#tkn_filtered_conc_mg_l = "tkn_filtered_00623_mg_l", 
-        # tp_dissolved_filtered_conc_mg_l = "tp_dissolved_filtered_00666_mg_l",
-        total_dissolved_solids_conc_mg_l = "total_dissolved_solids_70300_mg_l",
-        # total_solids_conc_mg_l = "total_solids_00500_mg_l",   
-        # total_suspended_solids_conc_mg_l = "total_suspended_solids_00530_mg_l",
-        # total_volatile_suspended_solids_conc_mg_l = "total_volatile_suspended_solids_00535_mg_l"
-        )
+    data_df_approved <- data_df_new %>% 
+      select(-contains('calculated'), -contains('used')) %>%
+      select(-intersect(all_of(c(loadvars, yieldvars)),
+                        names(data_df_new)))
+    
+    names(data_df_approved) <- gsub("_new", 
+                                    "",
+                                    names(data_df_approved))
+    
     
     #Clean up approved df
     data_df_approved2 <- data_df_approved %>%
-      select(intersect(names(data_df_approved),
-                       all_of(c(common_vars, approved_vars, loadvars, 
-                                concvars, flagvars, yieldvars)))) %>%
+      select(intersect(all_of(c(common_vars, approved_vars, loadvars, 
+                                concvars, flagvars, yieldvars)),
+                       names(data_df_approved))) %>%
       filter(exclude == 0) %>%
       mutate(project = project) %>%
-      select(site, FieldName, project, discrete, estimated, frozen, storm, 
-             unique_storm_number, storm_start, storm_end, runoff_volume, peak_discharge, 
+      select(site, Field_Name, project, discrete, estimated, frozen, storm, 
+             unique_storm_number, storm_start, storm_end, runoff_volume, peak_discharge,
              everything()) 
     
     
-    data_df_approved2$storm[!grepl("Tile", data_df_approved2$FieldName) &
+    
+    data_df_approved2$storm[!grepl("Tile", data_df_approved2$Field_Name) &
     is.na(data_df_approved2$storm)] <- 1
     
     

@@ -19,6 +19,7 @@ dataRetrieval::setAccess('internal')
 library(ggplot2)
 library(dplyr)
 library(stringr)
+library(readxl)
 # devtools::install_github("USGS-R/Rainmaker")
 
 # Turn on Rainmaker package
@@ -31,7 +32,7 @@ ieHr <- 2
 # Amount it must rain to count as an event in tenths of inches (rain threshold) -- note RMevents_sample does not use rainthresh
 rainthresh <- 0.008
 # Antecedent Rainfall in days (ARF.days)
-antecedentDays = c(0.5, 1, 7, 14)
+antecedentDays = c(1, 2, 7, 14)
 
 #For edge of field data, these can be commented out
 path_to_data <- "P:/0301"
@@ -39,44 +40,56 @@ path_to_results <- "C:/Users/lloken/OneDrive - DOI/EOF_SoilHealth"
 
 #Site data with gage IDs
 master_beforeafter_df <- readRDS(file.path(path_to_data, 'compiled_data', 'rain', 'Compiled_Masters.rds'))
-site_names <- master_beforeafter_df$site
-rain_sites <- master_beforeafter_df$`rain station ID`
+
+#Site data with gage IDs
+site_table <- read_excel(file.path(path_to_site, "EOF_Site_Table.xlsx")) %>%
+  filter(!is.na(`USGS_Station_Number`))
+
+names(site_table) <- gsub(" ", "", names(site_table))
+
+site_table_GLRI <- site_table %>%
+  mutate(across(c(Approximate_Start_Date, Approximate_End_Date), as.Date)) %>%
+  filter(Project == "GLRI")
+
+site_table_GLRI$Field_Name
+site_names <- site_table_GLRI$Field_Name
+rain_sites <-site_table_GLRI$USGS_Station_Number_for_Precipitation
 
 #***#***#***#***#***#***#***#***#***#***#***#***#***#***#***#***#
 # 1: Raw precip files from P:Drive. #***#***#***#***#    
 # as of June, 2020, four files in path. All in Eastern Standard time
-raw_files <- list.files(file.path(path_to_data, 'compiled_data', 'rain', 'raw_data'), full.names=TRUE)
-
-file=1
-data_list <- list()
-for (file in 1:length(raw_files)){
-  data_list[[file]] <- read.csv(raw_files[file], header=T, stringsAsFactors = F)
-  data_list[[file]] <- data_list[[file]] %>%
-    mutate(pdate = as.POSIXct(pdate, tz='Etc/GMT+5', 
-                              tryFormats = c("%Y-%m-%d %H:%M:%OS",  "%m/%d/%Y %H:%M",
-                                             "%Y-%m-%d %H:%M")))
-}
-
-names(data_list) <- list.files(file.path(path_to_data, 'compiled_data', 'rain', 'raw_data'))
-
-#Rename with rain gage IDS
-names(data_list)[grepl('424421077495301', names(data_list))] <- '424421077495301'
-names(data_list)[grepl('424133077495701', names(data_list))] <- '424133077495701'
-names(data_list)[grepl('411228084541701', names(data_list))] <- '411228084541701'
-names(data_list)[grepl('Precip_MI-FM2', names(data_list))] <- '425520083495901'
-
-#Combine data.frames and prepare for merge
-raw_rain_data <- bind_rows(data_list, .id = "rain_site")%>%
-  distinct() %>%
-  select(pdate, rain, rain_site) 
-
-attributes(raw_rain_data$pdate)$tzone <- 'UTC'
+# raw_files <- list.files(file.path(path_to_data, 'compiled_data', 'rain', 'raw_data'), full.names=TRUE)
+# 
+# file=1
+# data_list <- list()
+# for (file in 1:length(raw_files)){
+#   data_list[[file]] <- read.csv(raw_files[file], header=T, stringsAsFactors = F)
+#   data_list[[file]] <- data_list[[file]] %>%
+#     mutate(pdate = as.POSIXct(pdate, tz='Etc/GMT+5', 
+#                               tryFormats = c("%Y-%m-%d %H:%M:%OS",  "%m/%d/%Y %H:%M",
+#                                              "%Y-%m-%d %H:%M")))
+# }
+# 
+# names(data_list) <- list.files(file.path(path_to_data, 'compiled_data', 'rain', 'raw_data'))
+# 
+# #Rename with rain gage IDS
+# names(data_list)[grepl('424421077495301', names(data_list))] <- '424421077495301'
+# names(data_list)[grepl('424133077495701', names(data_list))] <- '424133077495701'
+# names(data_list)[grepl('411228084541701', names(data_list))] <- '411228084541701'
+# names(data_list)[grepl('Precip_MI-FM2', names(data_list))] <- '425520083495901'
+# 
+# #Combine data.frames and prepare for merge
+# raw_rain_data <- bind_rows(data_list, .id = "rain_site")%>%
+#   distinct() %>%
+#   select(pdate, rain, rain_site) 
+# 
+# attributes(raw_rain_data$pdate)$tzone <- 'UTC'
 
 
 #***#***#***#***#***#***#***#***#***#***#***#***#***#***#***#***#
 # 2: NWIS data
 
-rain_sites <- unique(master_beforeafter_df$`rain station ID`)
+rain_sites <- unique(site_table_GLRI$USGS_Station_Number_for_Precipitation)
 start_date <- as.Date(min(master_beforeafter_df$start_date, na.rm=T)) - 15
 end_date <- as.Date(max(master_beforeafter_df$end_date, na.rm=T)) +15
 parameterCd <- "00045"  # Precipitation
@@ -139,6 +152,7 @@ Rain.uv.combined <- Rain.uv %>%
 
 saveRDS(Rain.uv.combined, file.path(path_to_data, 'compiled_data', 'rain', 'Compiled_Rain_UV_Data.rds'))
 
+Rain.uv.combined <- readRDS(file.path(path_to_data, 'compiled_data', 'rain', 'Compiled_Rain_UV_Data.rds'))
 
 
 #***#***#***#***#***#***#***#***#***#***#***#***#***#***#***#***#
